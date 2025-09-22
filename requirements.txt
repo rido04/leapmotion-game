@@ -2,3 +2,5 @@ build
 cffi
 opencv-python
 numpy
+pygame
+leapc-python-api
