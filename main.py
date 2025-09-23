@@ -13,7 +13,7 @@ from main_menu import MainMenu
 
 if __name__ == "__main__":
     try:
-        menu = MainMenu()
+        menu = MainMenu(auto_fullscreen=True)  # Enable auto fullscreen
         menu.run()
     except Exception as e:
         print(f"Error starting application: {e}")

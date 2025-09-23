@@ -54,12 +54,12 @@ class BaseGame(ABC):
         
         self.back_button = AnimatedButton(
             WINDOW_WIDTH - 140, button_y, 120, 50, 
-            "⬅️ Menu", RED_DARK, RED
+            "Menu", RED_DARK, RED
         )
         
         self.fullscreen_button = AnimatedButton(
             WINDOW_WIDTH - 280, button_y, 130, 50, 
-            "🖥️ Fullscreen", GREEN_DARK, GREEN
+            "Fullscreen", GREEN_DARK, GREEN
         )
         
     def toggle_fullscreen(self):
@@ -73,7 +73,7 @@ class BaseGame(ABC):
             # Update button positions for fullscreen
             self.back_button.rect.x = info.current_w - 140
             self.fullscreen_button.rect.x = info.current_w - 280
-            self.fullscreen_button.text = "🪟 Windowed"
+            self.fullscreen_button.text = "Windowed"
             
         else:
             self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -81,7 +81,7 @@ class BaseGame(ABC):
             # Reset button positions for windowed mode
             self.back_button.rect.x = WINDOW_WIDTH - 140
             self.fullscreen_button.rect.x = WINDOW_WIDTH - 280
-            self.fullscreen_button.text = "🖥️ Fullscreen"
+            self.fullscreen_button.text = "Fullscreen"
     
     def handle_common_events(self, event):
         """Handle events common to all games"""

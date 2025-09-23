@@ -1,0 +1,2 @@
+run this command for export to desktop
+pyinstaller --onefile --windowed --hidden-import=_cffi_backend --hidden-import=cffi --add-data "games;games" --add-data "assets;assets" --add-data "core;core" main.py

@@ -173,12 +173,21 @@ class GameCard:
 
 
 class MainMenu:
-    def __init__(self):
+    def __init__(self, auto_fullscreen=True):  # Add parameter
         pygame.init()
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        
+        # Auto fullscreen untuk retail/kiosk mode
+        if auto_fullscreen:
+            info = pygame.display.Info()
+            self.screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+            self.fullscreen = True
+            pygame.mouse.set_visible(False)  # Hide cursor untuk kiosk mode
+        else:
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+            self.fullscreen = False
+        
         pygame.display.set_caption("Hand Tracking Games - Main Menu")
         self.clock = pygame.time.Clock()
-        self.fullscreen = False
         
         # Initialize components
         self.setup_fonts()
@@ -195,7 +204,7 @@ class MainMenu:
         # Create game cards
         self.create_game_cards()
         
-        # Create UI buttons
+        # Create UI buttons (adjust position jika fullscreen)
         self.create_ui_buttons()
         
     def setup_fonts(self):
@@ -233,12 +242,14 @@ class MainMenu:
             self.game_cards.append(card)
     
     def create_ui_buttons(self):
-        """Create menu UI buttons"""
+        """Create menu UI buttons - adjust position based on screen size"""
         button_y = 20
+        current_width = self.screen.get_width()  # Get actual screen width
         
         self.fullscreen_button = AnimatedButton(
-            WINDOW_WIDTH - 140, button_y, 130, 50,
-            "🖥️ Fullscreen", GREEN_DARK, GREEN
+            current_width - 140, button_y, 130, 50,
+            "🪟 Windowed" if self.fullscreen else "🖥️ Fullscreen", 
+            GREEN_DARK, GREEN
         )
     
     def toggle_fullscreen(self):
