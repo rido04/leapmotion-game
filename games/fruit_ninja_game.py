@@ -2,6 +2,7 @@
 """
 Fruit Ninja style game with hand tracking - Perfect for Leap Motion Gen 1
 Designed for Adidas outlets with swipe gestures
+Fixed fullscreen layout alignment issues
 """
 
 import pygame
@@ -61,12 +62,16 @@ class SwipeTrail:
 
 
 class FruitObject:
-    def __init__(self, x, y, fruit_type):
+    def __init__(self, x, y, fruit_type, screen_width, screen_height):
         self.x = x
         self.y = y
         self.start_x = x
         self.start_y = y
         self.fruit_type = fruit_type  # 'apple', 'orange', 'banana', 'bomb'
+        
+        # Store screen dimensions for boundary checking
+        self.screen_width = screen_width
+        self.screen_height = screen_height
         
         # Physics - Balanced throw that stays on screen
         self.velocity_x = random.uniform(-3, 3)
@@ -112,8 +117,8 @@ class FruitObject:
                 self.particles.remove(particle)
     
     def is_off_screen(self):
-        return (self.y > WINDOW_HEIGHT + 100 or 
-                self.x < -100 or self.x > WINDOW_WIDTH + 100)
+        return (self.y > self.screen_height + 100 or 
+                self.x < -100 or self.x > self.screen_width + 100)
     
     def check_swipe_collision(self, trail_points):
         """Check if swipe trail intersects with fruit"""
@@ -238,7 +243,7 @@ class FruitObject:
 class FruitNinjaGame(BaseGame):
     def __init__(self, screen=None):
         super().__init__(screen)
-        pygame.display.set_caption("Adidas Fruit Slash Challenge")
+        pygame.display.set_caption("Fruit Slash Challenge")
         
         # Hand tracking for swipe - initialize before reset_game()
         self.swipe_trail = SwipeTrail()
@@ -262,13 +267,30 @@ class FruitNinjaGame(BaseGame):
         self.combo_count = 0
         self.last_combo_time = 0
         
-        # Buttons - initialize both positions
+        # Buttons - initialize positions dynamically
+        self.create_game_buttons()
+    
+    def create_game_buttons(self):
+        """Create game-specific buttons with dynamic positioning"""
+        current_width, current_height = self.get_current_screen_size()
+        
         self.reset_button_normal = AnimatedButton(
-            WINDOW_WIDTH - 580, 20, 120, 50, "🍎 Reset", (255, 165, 0), (255, 200, 100)
+            current_width - 580, 20, 120, 50, "🎯 Reset", (255, 165, 0), (255, 200, 100)
         )
         self.reset_button_game_over = AnimatedButton(
-            WINDOW_WIDTH//2 - 75, WINDOW_HEIGHT//2 + 80, 150, 60, "🍎 Play Again", (255, 165, 0), (255, 200, 100)
+            current_width//2 - 75, current_height//2 + 80, 150, 60, "🎯 Play Again", (255, 165, 0), (255, 200, 100)
         )
+    
+    def recalculate_game_layout(self):
+        """Recalculate game-specific layout when screen size changes"""
+        print("Recalculating Fruit Ninja layout...")
+        self.create_game_buttons()
+        
+        # Update existing fruits with new screen dimensions
+        current_width, current_height = self.get_current_screen_size()
+        for fruit in self.fruits:
+            fruit.screen_width = current_width
+            fruit.screen_height = current_height
     
     def get_game_info(self):
         return {
@@ -312,6 +334,8 @@ class FruitNinjaGame(BaseGame):
     
     def spawn_fruit(self):
         """Spawn new fruit from bottom of screen"""
+        current_width, current_height = self.get_current_screen_size()
+        
         # Determine how many fruits to spawn
         if self.frenzy_mode:
             # In frenzy mode, spawn more fruits
@@ -324,9 +348,9 @@ class FruitNinjaGame(BaseGame):
             spawn_count = 1
         
         for _ in range(spawn_count):
-            # Random spawn position at bottom
-            spawn_x = random.randint(80, WINDOW_WIDTH - 80)
-            spawn_y = WINDOW_HEIGHT + 20
+            # Random spawn position at bottom using dynamic screen width
+            spawn_x = random.randint(80, current_width - 80)
+            spawn_y = current_height + 20
             
             # Choose fruit type
             if self.frenzy_mode:
@@ -344,7 +368,7 @@ class FruitNinjaGame(BaseGame):
                 else:
                     fruit_type = random.choice(fruit_types)
             
-            fruit = FruitObject(spawn_x, spawn_y, fruit_type)
+            fruit = FruitObject(spawn_x, spawn_y, fruit_type, current_width, current_height)
             # Add controlled boost - prevent flying off screen
             extra_boost = random.uniform(1, 3) if not self.frenzy_mode else random.uniform(2, 5)
             fruit.velocity_y -= extra_boost
@@ -368,7 +392,7 @@ class FruitNinjaGame(BaseGame):
         self.frenzy_timer = 8.0  # 8 seconds of frenzy
         self.frenzy_count += 1
         self.spawn_interval = 0.5  # Much faster spawning
-        print("🔥 FRENZY MODE ACTIVATED! 🔥")
+        print("FRENZY MODE ACTIVATED!")
     
     def end_frenzy_mode(self):
         """End frenzy mode and start cooldown"""
@@ -577,6 +601,8 @@ class FruitNinjaGame(BaseGame):
     
     def draw_game(self):
         """Draw fruit ninja game elements"""
+        current_width, current_height = self.get_current_screen_size()
+        
         # Apply screen shake effect only if game is not over
         shake_offset_x = 0
         shake_offset_y = 0
@@ -585,36 +611,36 @@ class FruitNinjaGame(BaseGame):
             shake_offset_x = random.randint(-self.screen_shake, self.screen_shake)
             shake_offset_y = random.randint(-self.screen_shake, self.screen_shake)
         
-        # Create temporary surface for shake effect
+        # Create temporary surface for shake effect - Fixed: use dynamic screen size
         if self.screen_shake > 0 and not self.game_over:
-            temp_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            temp_surface = pygame.Surface((current_width, current_height))
             draw_surface = temp_surface
         else:
             draw_surface = self.screen
         
         # Draw background effect for frenzy mode
         if self.frenzy_mode and not self.game_over:
-            # Red tinted overlay for frenzy
-            frenzy_overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            # Red tinted overlay for frenzy - Fixed: use dynamic screen size
+            frenzy_overlay = pygame.Surface((current_width, current_height))
             frenzy_overlay.set_alpha(30)
             frenzy_overlay.fill(RED)
             draw_surface.blit(frenzy_overlay, (0, 0))
         elif self.frenzy_cooldown > 0 and not self.game_over:
-            # Blue tinted overlay for cooldown
-            cooldown_overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            # Blue tinted overlay for cooldown - Fixed: use dynamic screen size
+            cooldown_overlay = pygame.Surface((current_width, current_height))
             cooldown_overlay.set_alpha(20)
             cooldown_overlay.fill(BLUE)
             draw_surface.blit(cooldown_overlay, (0, 0))
         
         # Draw title
-        title_text = self.font_title.render("ADIDAS FRUIT SLASH", True, WHITE)
+        title_text = self.font_title.render("FRUIT SLASHER", True, WHITE)
         title_x = 250
         title_y = 40
         draw_surface.blit(title_text, (title_x, title_y))
         
         # Subtitle with mode indicator
         if self.frenzy_mode:
-            subtitle_text = self.font_small.render("🔥 FRENZY MODE! 🔥", True, YELLOW)
+            subtitle_text = self.font_small.render("FRENZY MODE!", True, YELLOW)
         elif self.frenzy_cooldown > 0:
             subtitle_text = self.font_small.render("🛡️ COOLDOWN PROTECTION 🛡️", True, BLUE)
         else:
@@ -677,39 +703,39 @@ class FruitNinjaGame(BaseGame):
                 frenzy_text = self.font_small.render(f"Next Frenzy: {remaining} pts", True, LIGHT_GRAY)
                 draw_surface.blit(frenzy_text, (50, ui_y + 120))
         
-        # Combo indicator
+        # Combo indicator - Fixed: use dynamic screen size
         if self.combo_timer > 0:
             combo_alpha = int((self.combo_timer / 2.0) * 255)
             combo_color = YELLOW if not self.frenzy_mode else RED
             combo_text = self.font_title.render(f"COMBO x{self.combo_count}!", True, combo_color)
-            combo_rect = combo_text.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 100))
+            combo_rect = combo_text.get_rect(center=(current_width//2, current_height//2 - 100))
             draw_surface.blit(combo_text, combo_rect)
         
-        # Frenzy mode announcement
+        # Frenzy mode announcement - Fixed: use dynamic screen size
         if self.frenzy_mode and self.frenzy_timer > 6:  # Show for first 2 seconds
-            frenzy_announce = self.font_title.render("🔥 FRENZY MODE! 🔥", True, YELLOW)
-            frenzy_rect = frenzy_announce.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2))
+            frenzy_announce = self.font_title.render("FRENZY MODE!", True, YELLOW)
+            frenzy_rect = frenzy_announce.get_rect(center=(current_width//2, current_height//2))
             
             # Pulsing effect
             pulse = math.sin(self.frenzy_timer * 10) * 10
             frenzy_rect.y += int(pulse)
             draw_surface.blit(frenzy_announce, frenzy_rect)
         
-        # Game over screen
+        # Game over screen - Fixed: use dynamic screen size
         if self.game_over:
-            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            overlay = pygame.Surface((current_width, current_height))
             overlay.set_alpha(128)
             overlay.fill(BLACK)
             draw_surface.blit(overlay, (0, 0))
             
             # Game Over Title
             game_over_text = self.font_title.render("GAME OVER", True, RED)
-            game_over_rect = game_over_text.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 100))
+            game_over_rect = game_over_text.get_rect(center=(current_width//2, current_height//2 - 100))
             draw_surface.blit(game_over_text, game_over_rect)
             
             # Final score
             final_score_text = self.font_title.render(f"Final Score: {self.score}", True, YELLOW)
-            score_rect = final_score_text.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 50))
+            score_rect = final_score_text.get_rect(center=(current_width//2, current_height//2 - 50))
             draw_surface.blit(final_score_text, score_rect)
             
             # Performance message
@@ -727,7 +753,7 @@ class FruitNinjaGame(BaseGame):
                 message_color = WHITE
             
             message_text = self.font_medium.render(message, True, message_color)
-            message_rect = message_text.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 + 20))
+            message_rect = message_text.get_rect(center=(current_width//2, current_height//2 + 20))
             draw_surface.blit(message_text, message_rect)
             
             # Draw game over reset button (centered)
@@ -736,7 +762,7 @@ class FruitNinjaGame(BaseGame):
             # Draw normal reset button (top right)
             self.reset_button_normal.draw(draw_surface, self.font_small)
         
-        # Instructions
+        # Instructions - Fixed: use dynamic screen size
         if not self.game_over:
             instructions = [
                 "SWIPE through fruits to slice them | FRENZY MODE = Invincible!",
@@ -744,13 +770,13 @@ class FruitNinjaGame(BaseGame):
                 "R: Reset | ESC: Back to Menu"
             ]
             
-            instruction_y = draw_surface.get_height() - 80
+            instruction_y = current_height - 80
             for i, instruction in enumerate(instructions):
                 text = self.font_small.render(instruction, True, LIGHT_GRAY)
-                text_rect = text.get_rect(center=(WINDOW_WIDTH//2, instruction_y + i * 25))
+                text_rect = text.get_rect(center=(current_width//2, instruction_y + i * 25))
                 draw_surface.blit(text, text_rect)
         
-        # Blit shaken surface to main screen (only if not game over)
+        # Blit shaken surface to main screen (only if not game over) - Fixed: use dynamic screen size
         if self.screen_shake > 0 and not self.game_over:
             self.screen.fill(BLACK)  # Clear main screen
             self.screen.blit(temp_surface, (shake_offset_x, shake_offset_y))

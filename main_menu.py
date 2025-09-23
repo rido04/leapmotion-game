@@ -1,6 +1,8 @@
 # main_menu.py
 """
 Main menu for the Hand Tracking Game Collection
+Removed fullscreen toggle - always runs in fullscreen mode for kiosk/retail use
+Fixed card positioning to be more centered and not too low
 """
 
 import pygame
@@ -27,6 +29,11 @@ class GameCard:
         self.hover_color = game_info.get('preview_color', BLUE)
         self.current_color = self.base_color
         self.glow_intensity = 0
+        
+    def update_position(self, x, y):
+        """Update card position - for layout recalculation"""
+        self.rect.x = x
+        self.rect.y = y
         
     def update(self, mouse_pos, hand_pos=None, hand_pinching=False):
         # Check hover state
@@ -173,18 +180,13 @@ class GameCard:
 
 
 class MainMenu:
-    def __init__(self, auto_fullscreen=True):  # Add parameter
+    def __init__(self, auto_fullscreen=True):
         pygame.init()
         
-        # Auto fullscreen untuk retail/kiosk mode
-        if auto_fullscreen:
-            info = pygame.display.Info()
-            self.screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
-            self.fullscreen = True
-            pygame.mouse.set_visible(False)  # Hide cursor untuk kiosk mode
-        else:
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-            self.fullscreen = False
+        # Always start in fullscreen for kiosk/retail mode
+        info = pygame.display.Info()
+        self.screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+        pygame.mouse.set_visible(False)  # Hide cursor for kiosk mode
         
         pygame.display.set_caption("Hand Tracking Games - Main Menu")
         self.clock = pygame.time.Clock()
@@ -201,11 +203,9 @@ class MainMenu:
         self.selected_game = None
         self.time_elapsed = 0
         
-        # Create game cards
+        # Create game cards (no UI buttons needed anymore)
+        self.game_cards = []
         self.create_game_cards()
-        
-        # Create UI buttons (adjust position jika fullscreen)
-        self.create_ui_buttons()
         
     def setup_fonts(self):
         self.font_title = pygame.font.Font(None, FONT_TITLE)
@@ -213,23 +213,41 @@ class MainMenu:
         self.font_medium = pygame.font.Font(None, FONT_MEDIUM)
         self.font_small = pygame.font.Font(None, FONT_SMALL)
         
+    def get_current_screen_size(self):
+        """Get current screen dimensions"""
+        return self.screen.get_width(), self.screen.get_height()
+        
     def create_game_cards(self):
-        """Create cards for available games"""
-        self.game_cards = []
+        """Create cards for available games - uses dynamic screen size with better positioning"""
+        self.game_cards.clear()  # Clear existing cards
+        
+        current_width, current_height = self.get_current_screen_size()
         
         # Use games from registry
         games_info = AVAILABLE_GAMES
         
-        # Calculate card layout
+        # Calculate card layout based on current screen size - IMPROVED POSITIONING
         cards_per_row = 2
-        card_width = 250
+        card_width = 280  # Slightly wider cards
         card_height = 200
-        card_spacing_x = 50
+        card_spacing_x = 60
         card_spacing_y = 50
         
         total_width = cards_per_row * card_width + (cards_per_row - 1) * card_spacing_x
-        start_x = (WINDOW_WIDTH - total_width) // 2
-        start_y = 300
+        total_height = ((len(games_info) + cards_per_row - 1) // cards_per_row) * card_height + \
+                      (((len(games_info) + cards_per_row - 1) // cards_per_row) - 1) * card_spacing_y
+        
+        # Center the cards better - moved up significantly
+        start_x = (current_width - total_width) // 2
+        start_y = (current_height - total_height) // 2 - 50  # Move up by 50 pixels
+        
+        # Ensure minimum Y position to avoid overlap with title
+        min_y = 200  # Minimum distance from top
+        if start_y < min_y:
+            start_y = min_y
+        
+        print(f"Card layout: Total area {total_width}x{total_height} at ({start_x}, {start_y})")
+        print(f"Screen size: {current_width}x{current_height}")
         
         for i, game_info in enumerate(games_info):
             row = i // cards_per_row
@@ -240,35 +258,6 @@ class MainMenu:
             
             card = GameCard(x, y, card_width, card_height, game_info)
             self.game_cards.append(card)
-    
-    def create_ui_buttons(self):
-        """Create menu UI buttons - adjust position based on screen size"""
-        button_y = 20
-        current_width = self.screen.get_width()  # Get actual screen width
-        
-        self.fullscreen_button = AnimatedButton(
-            current_width - 140, button_y, 130, 50,
-            "🪟 Windowed" if self.fullscreen else "🖥️ Fullscreen", 
-            GREEN_DARK, GREEN
-        )
-    
-    def toggle_fullscreen(self):
-        self.fullscreen = not self.fullscreen
-        
-        if self.fullscreen:
-            info = pygame.display.Info()
-            self.screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
-            
-            # Update button position
-            self.fullscreen_button.rect.x = info.current_w - 140
-            self.fullscreen_button.text = "🪟 Windowed"
-            
-        else:
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-            
-            # Reset button position
-            self.fullscreen_button.rect.x = WINDOW_WIDTH - 140
-            self.fullscreen_button.text = "🖥️ Fullscreen"
     
     def launch_game(self, game_info):
         """Launch selected game"""
@@ -305,17 +294,11 @@ class MainMenu:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
-                elif event.key == pygame.K_F11:
-                    self.toggle_fullscreen()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                # Check UI button clicks
-                if self.fullscreen_button.is_clicked(event.pos, True):
-                    self.toggle_fullscreen()
-                else:
-                    # Check game card clicks
-                    for card in self.game_cards:
-                        if card.is_clicked(event.pos, True):
-                            self.launch_game(card.game_info)
+                # Check game card clicks
+                for card in self.game_cards:
+                    if card.is_clicked(event.pos, True):
+                        self.launch_game(card.game_info)
     
     def update(self):
         self.time_elapsed += 0.016
@@ -335,21 +318,16 @@ class MainMenu:
             # Check for hand activation
             if card.is_hand_activated():
                 self.launch_game(card.game_info)
-        
-        # Update UI buttons
-        self.fullscreen_button.update(mouse_pos, hand_pos, hand_data.pinching)
-        
-        # Check for hand-activated buttons
-        if self.fullscreen_button.is_hand_activated():
-            self.toggle_fullscreen()
-            print("Fullscreen toggled by hand gesture!")
     
     def draw(self):
+        # Get current screen size for dynamic positioning
+        current_width, current_height = self.get_current_screen_size()
+        
         # Draw background
         self.background_manager.draw(self.screen)
         
         # Draw particles
-        self.particle_system.update(self.screen.get_width(), self.screen.get_height())
+        self.particle_system.update(current_width, current_height)
         self.particle_system.draw(self.screen)
         
         # Draw logos
@@ -357,20 +335,17 @@ class MainMenu:
         
         # Draw title
         title_text = self.font_title.render("HAND TRACKING GAMES", True, WHITE)
-        title_rect = title_text.get_rect(center=(WINDOW_WIDTH // 2, 80))
+        title_rect = title_text.get_rect(center=(current_width // 2, 80))
         self.screen.blit(title_text, title_rect)
         
         # Draw subtitle
         subtitle_text = self.font_small.render("Choose a game by clicking or pinching", True, CYAN)
-        subtitle_rect = subtitle_text.get_rect(center=(WINDOW_WIDTH // 2, 120))
+        subtitle_rect = subtitle_text.get_rect(center=(current_width // 2, 120))
         self.screen.blit(subtitle_text, subtitle_rect)
         
         # Draw game cards
         for card in self.game_cards:
             card.draw(self.screen, self.font_medium, self.font_small, self.time_elapsed)
-        
-        # Draw UI buttons
-        self.fullscreen_button.draw(self.screen, self.font_small)
         
         # Draw hand tracking status
         hand_data = self.hand_tracker.hand_data
@@ -382,29 +357,30 @@ class MainMenu:
             pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), int(pulse), 2)
             
             # Status text
-            status = f"✋ Hand Tracking: {hand_data.hands_count} hands detected"
+            status = f"Hand Tracking: {hand_data.hands_count} hands detected"
             status_color = GREEN
         else:
-            status = "🖱️ Using mouse (no hand tracking)"
+            status = "Using mouse (no hand tracking)"
             status_color = LIGHT_GRAY
         
         status_text = self.font_small.render(status, True, status_color)
-        status_rect = status_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 40))
+        status_rect = status_text.get_rect(center=(current_width // 2, current_height - 40))
         self.screen.blit(status_text, status_rect)
         
-        # Instructions
+        # Instructions (removed F11 fullscreen reference)
         instructions = [
-            "🎯 Hover over game cards and PINCH to select | 🖱️ Mouse click also works",
-            "🔄 Hover over buttons for 1 sec or PINCH | F11: Fullscreen | B: Background | ESC: Exit"
+            "Hover over game cards and PINCH to select | Mouse click also works",
+            "Hover over buttons for 1 sec or PINCH | B: Background | ESC: Exit"
         ]
         
         for i, instruction in enumerate(instructions):
             text = pygame.font.Font(None, 20).render(instruction, True, LIGHT_GRAY)
-            text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 80 + i * 20))
+            text_rect = text.get_rect(center=(current_width // 2, current_height - 80 + i * 20))
             self.screen.blit(text, text_rect)
     
     def run(self):
-        print("Starting Main Menu...")
+        print("Starting Main Menu in fullscreen mode...")
+        print(f"Screen size: {self.get_current_screen_size()}")
         self.hand_tracker.start()
         
         while self.running:

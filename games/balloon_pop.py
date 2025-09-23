@@ -2,6 +2,7 @@
 """
 Balloon Pop Game using hand tracking
 Pop balloons as they float up from the bottom
+Fixed fullscreen layout alignment issues
 """
 
 import pygame
@@ -14,13 +15,17 @@ from core import *
 
 class Balloon:
     """Individual balloon object"""
-    def __init__(self, x, y, balloon_image, color_name):
+    def __init__(self, x, y, balloon_image, color_name, screen_width, screen_height):
         self.original_image = balloon_image
         self.image = balloon_image
         self.rect = self.image.get_rect()
         self.rect.centerx = x
         self.rect.bottom = y
         self.color_name = color_name
+        
+        # Store screen dimensions for boundary checking
+        self.screen_width = screen_width
+        self.screen_height = screen_height
         
         # Movement properties
         self.speed_y = random.uniform(1.0, 3.0)  # Upward speed
@@ -69,6 +74,12 @@ class Balloon:
         # Floating motion
         float_offset = math.sin(time_elapsed * self.float_frequency + self.bob_offset) * self.float_amplitude
         self.rect.centerx = self.initial_x + self.speed_x * time_elapsed + float_offset
+        
+        # Keep balloon within screen bounds horizontally
+        if self.rect.left < 0:
+            self.rect.left = 0
+        elif self.rect.right > self.screen_width:
+            self.rect.right = self.screen_width
         
         # Update rotation
         self.rotation += self.rotation_speed * dt
@@ -218,16 +229,33 @@ class BalloonPopGame(BaseGame):
         # Game progression
         self.balloons_for_next_level = 20
         
-        # UI Elements
-        self.restart_button = AnimatedButton(
-            WINDOW_WIDTH - 580, 20, 120, 50, "🎈 New Game", PURPLE, GREEN
-        )
+        # UI Elements - will be positioned dynamically
+        self.create_game_buttons()
         
         # Particle system for effects
         self.particles = []
         
         # Initialize first spawn
         self.last_spawn_time = time.time()
+    
+    def create_game_buttons(self):
+        """Create game-specific buttons with dynamic positioning"""
+        current_width, current_height = self.get_current_screen_size()
+        
+        self.restart_button = AnimatedButton(
+            current_width - 580, 20, 120, 50, "🎈 New Game", PURPLE, GREEN
+        )
+    
+    def recalculate_game_layout(self):
+        """Recalculate game-specific layout when screen size changes"""
+        print("Recalculating Balloon Pop layout...")
+        self.create_game_buttons()
+        
+        # Update existing balloons with new screen dimensions
+        current_width, current_height = self.get_current_screen_size()
+        for balloon in self.balloons:
+            balloon.screen_width = current_width
+            balloon.screen_height = current_height
         
     def get_game_info(self):
         return {
@@ -290,15 +318,17 @@ class BalloonPopGame(BaseGame):
     
     def spawn_balloon(self):
         """Spawn a new balloon"""
-        # Random position along bottom of screen
-        x = random.randint(50, WINDOW_WIDTH - 50)
-        y = WINDOW_HEIGHT + 50  # Start below screen
+        current_width, current_height = self.get_current_screen_size()
+        
+        # Random position along bottom of screen using dynamic width
+        x = random.randint(50, current_width - 50)
+        y = current_height + 50  # Start below screen
         
         # Random balloon color
         color_name = random.choice(self.balloon_colors)
         balloon_image = self.balloon_images[color_name]
         
-        balloon = Balloon(x, y, balloon_image, color_name)
+        balloon = Balloon(x, y, balloon_image, color_name, current_width, current_height)
         self.balloons.append(balloon)
     
     def handle_game_events(self, event):
@@ -438,6 +468,8 @@ class BalloonPopGame(BaseGame):
     
     def draw_game(self):
         """Draw balloon pop game"""
+        current_width, current_height = self.get_current_screen_size()
+        
         # Draw title
         title_text = self.font_title.render("BALLOON POP", True, WHITE)
         title_x = 250
@@ -471,9 +503,9 @@ class BalloonPopGame(BaseGame):
                 end_pos = self.hand_trail[i][:2]
                 alpha = int(255 * (i / len(self.hand_trail)))
                 
-                # Create surface for alpha line
+                # Create surface for alpha line - Fixed: use dynamic screen size
                 if alpha > 0:
-                    trail_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+                    trail_surface = pygame.Surface((current_width, current_height), pygame.SRCALPHA)
                     pygame.draw.line(trail_surface, (0, 255, 255, alpha), start_pos, end_pos, max(1, 5 - i))
                     self.screen.blit(trail_surface, (0, 0))
         
@@ -517,9 +549,9 @@ class BalloonPopGame(BaseGame):
         progress_text = self.font_small.render(f"Next level: {needed} more", True, LIGHT_GRAY)
         self.screen.blit(progress_text, (stats_x, stats_y + 140))
         
-        # Game status
-        center_x = WINDOW_WIDTH // 2
-        status_y = WINDOW_HEIGHT - 120
+        # Game status - Fixed: use dynamic screen size
+        center_x = current_width // 2
+        status_y = current_height - 120
         
         if self.game_over:
             game_over_text = self.font_large.render("GAME OVER", True, RED)
@@ -544,13 +576,13 @@ class BalloonPopGame(BaseGame):
         # Draw restart button
         self.restart_button.draw(self.screen, self.font_small)
         
-        # Instructions
+        # Instructions - Fixed: use dynamic screen size
         instructions = [
             "Use PINCH gesture to pop balloons",
             "Don't let too many escape!",
             "Mouse click also works | R: Restart | ESC: Menu"
         ]
-        instruction_y = WINDOW_HEIGHT - 80
+        instruction_y = current_height - 80
         for i, instruction in enumerate(instructions):
             text = self.font_small.render(instruction, True, LIGHT_GRAY)
             text_rect = text.get_rect(center=(center_x, instruction_y + i * 20))

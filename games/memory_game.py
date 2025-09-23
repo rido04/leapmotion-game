@@ -3,19 +3,23 @@
 Memory Card Game using hand tracking
 Match pairs of cards to win
 Enhanced version with intro sequence and improved animations
+Fixed fullscreen layout alignment issues
+FIXED: Main Menu button functionality in win overlay
+MODIFIED: Using PNG images for card fronts and backs
 """
 
 import pygame
 import random
 import math
 import time
+import os
 from .base_game import BaseGame
 from core import *
 
 
 class Card:
-    """Individual memory card with enhanced animations"""
-    def __init__(self, x, y, width, height, symbol, color):
+    """Individual memory card with enhanced animations and image support"""
+    def __init__(self, x, y, width, height, symbol, color, front_image=None, back_image=None):
         self.rect = pygame.Rect(x, y, width, height)
         self.symbol = symbol
         self.color = color
@@ -29,6 +33,23 @@ class Card:
         self.intro_delay = 0  # For staggered intro animation
         self.intro_animation = 0.0
         self.show_during_intro = False
+        
+        # Image support
+        self.front_image = front_image
+        self.back_image = back_image
+        self.scaled_front_image = None
+        self.scaled_back_image = None
+        
+        # Scale images if provided
+        if self.front_image:
+            self.scaled_front_image = pygame.transform.scale(self.front_image, (width - 10, height - 10))
+        if self.back_image:
+            self.scaled_back_image = pygame.transform.scale(self.back_image, (width - 10, height - 10))
+        
+    def update_position(self, x, y):
+        """Update card position - for layout recalculation"""
+        self.rect.x = x
+        self.rect.y = y
         
     def update(self, dt):
         """Update card animations"""
@@ -75,7 +96,7 @@ class Card:
         self.intro_animation = 0.0
     
     def draw(self, screen, font, time_elapsed, game_state="playing"):
-        """Draw the card with enhanced animations"""
+        """Draw the card with enhanced animations and images"""
         # Don't draw if intro animation hasn't started yet
         if time_elapsed < self.intro_delay:
             return
@@ -122,9 +143,9 @@ class Card:
         card_surface = pygame.Surface((card_rect.width, card_rect.height), pygame.SRCALPHA)
         
         if show_face:
-            self.draw_card_face(card_surface, pygame.Rect(0, 0, card_rect.width, card_rect.height), font)
+            self.draw_card_face_with_image(card_surface, pygame.Rect(0, 0, card_rect.width, card_rect.height), font)
         else:
-            self.draw_card_back(card_surface, pygame.Rect(0, 0, card_rect.width, card_rect.height), time_elapsed)
+            self.draw_card_back_with_image(card_surface, pygame.Rect(0, 0, card_rect.width, card_rect.height), time_elapsed)
         
         # Apply rotation if flipping
         if game_state == "playing" and abs(self.rotation_angle) > 1:
@@ -155,44 +176,69 @@ class Card:
             pygame.draw.rect(glow_surface, self.color, (0, 0, card_rect.width + 10, card_rect.height + 10), border_radius=12)
             screen.blit(glow_surface, (card_rect.x - 5, card_rect.y - 5))
     
-    def draw_card_back(self, surface, rect, time_elapsed):
-        """Draw the back of the card"""
-        # Main card background
-        pygame.draw.rect(surface, DARK_GRAY, rect, border_radius=8)
-        pygame.draw.rect(surface, LIGHT_GRAY, rect, 2, border_radius=8)
-        
-        # Animated pattern on card back
-        for i in range(3):
-            for j in range(3):
-                dot_x = rect.x + 20 + j * 25
-                dot_y = rect.y + 20 + i * 25
-                
-                # Skip if outside card bounds
-                if dot_x > rect.right - 10 or dot_y > rect.bottom - 10:
-                    continue
-                
-                # Animated dots
-                wave = math.sin(time_elapsed * 2 + i * j * 0.5) * 0.5 + 0.5
-                dot_size = int(3 + wave * 2)
-                dot_color = (int(100 + wave * 50), int(100 + wave * 50), int(120 + wave * 50))
-                pygame.draw.circle(surface, dot_color, (dot_x, dot_y), dot_size)
+    def draw_card_back_with_image(self, surface, rect, time_elapsed):
+        """Draw the back of the card using image or fallback pattern"""
+        if self.scaled_back_image:
+            # Draw background
+            pygame.draw.rect(surface, WHITE, rect, border_radius=8)
+            pygame.draw.rect(surface, DARK_GRAY, rect, 3, border_radius=8)
+            
+            # Center the back image
+            image_rect = self.scaled_back_image.get_rect(center=rect.center)
+            surface.blit(self.scaled_back_image, image_rect)
+        else:
+            # Fallback to original pattern
+            # Main card background
+            pygame.draw.rect(surface, DARK_GRAY, rect, border_radius=8)
+            pygame.draw.rect(surface, LIGHT_GRAY, rect, 2, border_radius=8)
+            
+            # Animated pattern on card back
+            for i in range(3):
+                for j in range(3):
+                    dot_x = rect.x + 20 + j * 25
+                    dot_y = rect.y + 20 + i * 25
+                    
+                    # Skip if outside card bounds
+                    if dot_x > rect.right - 10 or dot_y > rect.bottom - 10:
+                        continue
+                    
+                    # Animated dots
+                    wave = math.sin(time_elapsed * 2 + i * j * 0.5) * 0.5 + 0.5
+                    dot_size = int(3 + wave * 2)
+                    dot_color = (int(100 + wave * 50), int(100 + wave * 50), int(120 + wave * 50))
+                    pygame.draw.circle(surface, dot_color, (dot_x, dot_y), dot_size)
     
-    def draw_card_face(self, surface, rect, font):
-        """Draw the face of the card with symbol"""
-        # Main card background
-        pygame.draw.rect(surface, WHITE, rect, border_radius=8)
-        pygame.draw.rect(surface, self.color, rect, 3, border_radius=8)
-        
-        # Draw symbol
-        symbol_surface = font.render(self.symbol, True, self.color)
-        symbol_rect = symbol_surface.get_rect(center=rect.center)
-        surface.blit(symbol_surface, symbol_rect)
+    def draw_card_face_with_image(self, surface, rect, font):
+        """Draw the face of the card using image or fallback symbol"""
+        if self.scaled_front_image:
+            # Draw background
+            pygame.draw.rect(surface, WHITE, rect, border_radius=8)
+            pygame.draw.rect(surface, self.color, rect, 3, border_radius=8)
+            
+            # Center the front image
+            image_rect = self.scaled_front_image.get_rect(center=rect.center)
+            surface.blit(self.scaled_front_image, image_rect)
+        else:
+            # Fallback to original symbol drawing
+            # Main card background
+            pygame.draw.rect(surface, WHITE, rect, border_radius=8)
+            pygame.draw.rect(surface, self.color, rect, 3, border_radius=8)
+            
+            # Draw symbol
+            symbol_surface = font.render(self.symbol, True, self.color)
+            symbol_rect = symbol_surface.get_rect(center=rect.center)
+            surface.blit(symbol_surface, symbol_rect)
 
 
 class MemoryGame(BaseGame):
     def __init__(self, screen=None):
         super().__init__(screen)
         pygame.display.set_caption("Memory Game - Hand Tracking")
+        
+        # Load card images
+        self.front_images = []
+        self.back_images = []
+        self.load_card_images()
         
         # Game settings
         self.grid_cols = 4
@@ -217,22 +263,131 @@ class MemoryGame(BaseGame):
         self.last_pinch = False
         self.start_time = time.time()
         
+        # FIXED: Add proper return flag
+        self.should_return_to_menu = False
+        
         # Visual settings
         self.card_width = 80
         self.card_height = 100
         self.card_spacing = 20
         
-        # Symbols and colors for cards
+        # Symbols and colors for cards (fallback)
         self.symbols = ['♠', '♥', '♦', '♣', '★', '●', '◆', '▲', '♪', '☀', '☽', '⚡']
         self.colors = [RED, BLUE, GREEN, PURPLE, CYAN, YELLOW, (255, 165, 0), (255, 20, 147)]
         
-        # Game-specific UI
-        self.new_game_button = AnimatedButton(
-            WINDOW_WIDTH - 580, 20, 120, 50, "🎮 New Game", GREEN_DARK, GREEN
-        )
+        # Game-specific UI - will be positioned dynamically
+        self.create_game_buttons()
+        
+        # WIN OVERLAY BUTTONS - NEW ADDITION
+        self.win_new_game_button = None
+        self.win_main_menu_button = None
+        self.create_win_overlay_buttons()
         
         # Initialize game
         self.setup_game()
+    
+    def load_card_images(self):
+        """Load card images from assets folder"""
+        try:
+            # Define base path for assets
+            assets_path = "assets"
+            
+            # Load front images (Adidas designs)
+            front_path = os.path.join(assets_path, "cards", "front")
+            front_image_files = [
+                "adidas_adizero.png",
+                "adidas_bywx.png", 
+                "adidas_crazy8.png",
+                "adidas_drose.png",
+                "adidas_own.png",
+                "adidas_ultraboost.png"
+            ]
+            
+            for image_file in front_image_files:
+                image_path = os.path.join(front_path, image_file)
+                if os.path.exists(image_path):
+                    try:
+                        image = pygame.image.load(image_path).convert_alpha()
+                        self.front_images.append(image)
+                        print(f"Loaded front image: {image_file}")
+                    except pygame.error as e:
+                        print(f"Error loading front image {image_file}: {e}")
+            
+            # Load back images
+            back_path = os.path.join(assets_path, "cards", "back")
+            back_image_file = "3-stripes.png"
+            back_image_path = os.path.join(back_path, back_image_file)
+            
+            if os.path.exists(back_image_path):
+                try:
+                    back_image = pygame.image.load(back_image_path).convert_alpha()
+                    self.back_images.append(back_image)
+                    print(f"Loaded back image: {back_image_file}")
+                except pygame.error as e:
+                    print(f"Error loading back image {back_image_file}: {e}")
+                    
+        except Exception as e:
+            print(f"Error loading card images: {e}")
+            print("Using fallback symbols and patterns")
+        
+        print(f"Loaded {len(self.front_images)} front images and {len(self.back_images)} back images")
+    
+    def create_game_buttons(self):
+        """Create game-specific buttons with dynamic positioning"""
+        current_width, current_height = self.get_current_screen_size()
+        
+        self.new_game_button = AnimatedButton(
+            current_width - 580, 20, 120, 50, "New Game", GREEN_DARK, GREEN
+        )
+    
+    def create_win_overlay_buttons(self):
+        """Create buttons for win overlay"""
+        current_width, current_height = self.get_current_screen_size()
+        center_x = current_width // 2
+        center_y = current_height // 2
+        
+        # Only New Game button - no Main Menu button
+        self.win_new_game_button = AnimatedButton(
+            center_x - 70, center_y + 80, 140, 50, "New Game", GREEN_DARK, GREEN
+        )
+        
+        # Remove Main Menu button completely
+        self.win_main_menu_button = None
+    
+    def recalculate_game_layout(self):
+        """Recalculate game-specific layout when screen size changes"""
+        print("Recalculating Memory Game layout...")
+        self.create_game_buttons()
+        self.create_win_overlay_buttons()
+        self.calculate_card_layout()
+        
+        # Update existing cards with new positions
+        if self.cards:
+            self.recalculate_card_positions()
+    
+    def calculate_card_layout(self):
+        """Calculate card layout based on current screen size"""
+        current_width, current_height = self.get_current_screen_size()
+        
+        # Calculate grid layout
+        total_width = self.grid_cols * self.card_width + (self.grid_cols - 1) * self.card_spacing
+        total_height = self.grid_rows * self.card_height + (self.grid_rows - 1) * self.card_spacing
+        
+        self.start_x = (current_width - total_width) // 2  # Fixed: use current screen width
+        self.start_y = 200  # Leave space for title and UI
+        
+        print(f"Card layout: {total_width}x{total_height} at ({self.start_x}, {self.start_y})")
+    
+    def recalculate_card_positions(self):
+        """Update existing card positions after screen size change"""
+        for i, card in enumerate(self.cards):
+            row = i // self.grid_cols
+            col = i % self.grid_cols
+            
+            x = self.start_x + col * (self.card_width + self.card_spacing)
+            y = self.start_y + row * (self.card_height + self.card_spacing)
+            
+            card.update_position(x, y)
     
     def get_game_info(self):
         return {
@@ -254,37 +409,64 @@ class MemoryGame(BaseGame):
         self.game_state = "intro_preview"
         self.state_timer = time.time()
         
-        # Create pairs of cards
-        symbols_to_use = self.symbols[:self.total_pairs]
-        colors_to_use = self.colors[:self.total_pairs]
+        # Reset return flag when starting new game
+        self.should_return_to_menu = False
         
-        # Create card data (symbol, color pairs)
+        # Reset button states to prevent activation loops
+        if self.win_new_game_button:
+            if hasattr(self.win_new_game_button, 'reset_activation'):
+                self.win_new_game_button.reset_activation()
+        
+        # Calculate layout based on current screen size
+        self.calculate_card_layout()
+        
+        # Create pairs of cards with images
+        self.create_card_pairs()
+    
+    def create_card_pairs(self):
+        """Create card pairs using images or fallback to symbols"""
         card_data = []
-        for i in range(self.total_pairs):
-            symbol = symbols_to_use[i]
-            color = colors_to_use[i]
-            # Add two cards with same symbol and color (a pair)
-            card_data.extend([(symbol, color), (symbol, color)])
+        
+        if len(self.front_images) >= self.total_pairs:
+            # Use images for cards
+            for i in range(self.total_pairs):
+                front_image = self.front_images[i]
+                back_image = self.back_images[0] if self.back_images else None
+                color = self.colors[i % len(self.colors)]
+                
+                # Create two identical cards (a pair)
+                card_data.extend([
+                    ("image", color, front_image, back_image),
+                    ("image", color, front_image, back_image)
+                ])
+        else:
+            # Fallback to symbols if not enough images
+            symbols_to_use = self.symbols[:self.total_pairs]
+            colors_to_use = self.colors[:self.total_pairs]
+            
+            for i in range(self.total_pairs):
+                symbol = symbols_to_use[i]
+                color = colors_to_use[i]
+                back_image = self.back_images[0] if self.back_images else None
+                
+                # Create two identical cards (a pair)
+                card_data.extend([
+                    (symbol, color, None, back_image),
+                    (symbol, color, None, back_image)
+                ])
         
         # Shuffle the cards
         random.shuffle(card_data)
         
-        # Calculate grid layout
-        total_width = self.grid_cols * self.card_width + (self.grid_cols - 1) * self.card_spacing
-        total_height = self.grid_rows * self.card_height + (self.grid_rows - 1) * self.card_spacing
-        
-        start_x = (WINDOW_WIDTH - total_width) // 2
-        start_y = 200  # Leave space for title and UI
-        
-        # Create Card objects
-        for i, (symbol, color) in enumerate(card_data):
+        # Create Card objects using calculated layout
+        for i, (symbol, color, front_image, back_image) in enumerate(card_data):
             row = i // self.grid_cols
             col = i % self.grid_cols
             
-            x = start_x + col * (self.card_width + self.card_spacing)
-            y = start_y + row * (self.card_height + self.card_spacing)
+            x = self.start_x + col * (self.card_width + self.card_spacing)
+            y = self.start_y + row * (self.card_height + self.card_spacing)
             
-            card = Card(x, y, self.card_width, self.card_height, symbol, color)
+            card = Card(x, y, self.card_width, self.card_height, symbol, color, front_image, back_image)
             
             # Set intro animation delay for staggered effect
             delay = (row * self.grid_cols + col) * 0.1
@@ -316,9 +498,18 @@ class MemoryGame(BaseGame):
                 self.checking_match = True
                 self.flip_timer = time.time()
                 
-                # Check for match
+                # Check for match (compare images or symbols)
                 card1, card2 = self.flipped_cards
-                if card1.symbol == card2.symbol and card1.color == card2.color:
+                cards_match = False
+                
+                if card1.front_image and card2.front_image:
+                    # Compare images (same object reference means same image)
+                    cards_match = card1.front_image is card2.front_image
+                else:
+                    # Compare symbols and colors
+                    cards_match = (card1.symbol == card2.symbol and card1.color == card2.color)
+                
+                if cards_match:
                     # Match found
                     card1.is_matched = True
                     card2.is_matched = True
@@ -344,15 +535,28 @@ class MemoryGame(BaseGame):
                 for card in self.cards:
                     card.show_during_intro = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            # Check new game button
-            if self.new_game_button.is_clicked(event.pos, True):
+            # Simplified win overlay button handling - only New Game button
+            if self.game_state == "game_over" and self.game_won:
+                mouse_pos = event.pos
+                print(f"Win overlay active, mouse clicked at: {mouse_pos}")
+                
+                # Check New Game button only
+                if (self.win_new_game_button and 
+                    self.win_new_game_button.rect.collidepoint(mouse_pos)):
+                    print("New Game button clicked!")
+                    self.setup_game()
+                    return None
+            
+            # Check regular game buttons (only if not in win overlay)
+            elif self.new_game_button and self.new_game_button.is_clicked(event.pos, True):
                 self.setup_game()
-            else:
+            elif self.game_state == "playing":
                 # Check card clicks only during playing state
-                if self.game_state == "playing":
-                    card = self.get_card_at_position(event.pos[0], event.pos[1])
-                    if card:
-                        self.handle_card_click(card)
+                card = self.get_card_at_position(event.pos[0], event.pos[1])
+                if card:
+                    self.handle_card_click(card)
+        
+        return None
     
     def update_game_state(self):
         """Update the game state machine"""
@@ -412,7 +616,7 @@ class MemoryGame(BaseGame):
             if hand_data.pinching and not self.last_pinch:
                 if hovered_card:
                     self.handle_card_click(hovered_card)
-                    print(f"Pinch detected on card: {hovered_card.symbol}")
+                    print(f"Pinch detected on card")
         
         self.last_pinch = hand_data.pinching
         
@@ -420,22 +624,44 @@ class MemoryGame(BaseGame):
         hand_pos = (hand_data.x, hand_data.y) if (hand_data.active and hand_data.hands_count > 0) else None
         self.new_game_button.update(mouse_pos, hand_pos, hand_data.pinching)
         
-        # Check for hand activation
+        # Simplified win overlay button update - only New Game button
+        if self.game_state == "game_over" and self.game_won:
+            if self.win_new_game_button:
+                self.win_new_game_button.update(mouse_pos, hand_pos, hand_data.pinching)
+                
+                # Check for hand gesture activation
+                if self.win_new_game_button.is_hand_activated():
+                    print("New Game started from win overlay by hand gesture!")
+                    self.setup_game()
+                    return None
+            
+            # Add pinch detection for win overlay New Game button
+            if hand_data.pinching and not self.last_pinch:
+                if (self.win_new_game_button and 
+                    self.win_new_game_button.rect.collidepoint(hand_data.x, hand_data.y)):
+                    print("New Game button activated by pinch!")
+                    self.setup_game()
+                    return None
+        
+        # Check for hand activation on regular buttons
         if self.new_game_button.is_hand_activated():
             self.setup_game()
             print("New game started by hand gesture!")
+        
+        return None
     
     def draw_game_state_overlay(self):
         """Draw overlays based on current game state"""
-        center_x = WINDOW_WIDTH // 2
-        center_y = WINDOW_HEIGHT // 2
+        current_width, current_height = self.get_current_screen_size()
+        center_x = current_width // 2  # Fixed: use dynamic screen width
+        center_y = current_height // 2  # Fixed: use dynamic screen height
         
         if self.game_state == "intro_preview":
             # Draw preview overlay
             elapsed = time.time() - self.state_timer
             remaining = max(0, self.preview_duration - elapsed)
             
-            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            overlay = pygame.Surface((current_width, current_height))
             overlay.set_alpha(128)
             overlay.fill((0, 0, 0))
             self.screen.blit(overlay, (0, 0))
@@ -483,37 +709,105 @@ class MemoryGame(BaseGame):
                 self.screen.blit(countdown_text, countdown_rect)
         
         elif self.game_state == "game_over" and self.game_won:
-            # Draw win overlay
-            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-            overlay.set_alpha(200)
-            overlay.fill((0, 50, 0))
+            # Draw win overlay with enhanced styling
+            overlay = pygame.Surface((current_width, current_height))
+            overlay.set_alpha(220)
+            overlay.fill((0, 40, 0))
             self.screen.blit(overlay, (0, 0))
+            
+            # Animated background effects
+            for i in range(10):
+                star_x = (center_x - 300 + i * 60) + math.sin(self.background_manager.time_elapsed * 2 + i) * 20
+                star_y = (center_y - 200) + math.cos(self.background_manager.time_elapsed * 3 + i * 0.5) * 30
+                star_size = int(3 + math.sin(self.background_manager.time_elapsed * 4 + i) * 2)
+                pygame.draw.circle(self.screen, YELLOW, (int(star_x), int(star_y)), star_size)
             
             # Win text with animation
             pulse = math.sin(self.background_manager.time_elapsed * 3) * 0.3 + 1
             win_font_size = int(80 * pulse)
             win_font = pygame.font.Font(None, win_font_size)
             
+            # Gradient text effect
             win_text = win_font.render("YOU WON!", True, YELLOW)
-            win_rect = win_text.get_rect(center=(center_x, center_y - 80))
+            win_rect = win_text.get_rect(center=(center_x, center_y - 120))
+            
+            # Draw text shadow
+            shadow_text = win_font.render("YOU WON!", True, (100, 100, 0))
+            shadow_rect = shadow_text.get_rect(center=(center_x + 3, center_y - 117))
+            self.screen.blit(shadow_text, shadow_rect)
             self.screen.blit(win_text, win_rect)
             
-            # Game stats
+            # Celebration message
+            celebration_messages = ["Excellent Memory!", "Well Done!", "Perfect Match!", "Outstanding!"]
+            message_index = int(self.background_manager.time_elapsed) % len(celebration_messages)
+            celebration_text = self.font_medium.render(celebration_messages[message_index], True, CYAN)
+            celebration_rect = celebration_text.get_rect(center=(center_x, center_y - 80))
+            self.screen.blit(celebration_text, celebration_rect)
+            
+            # Game stats with better formatting
             game_time = time.time() - self.start_time
             minutes = int(game_time // 60)
             seconds = int(game_time % 60)
             
-            stats_text = self.font_medium.render(f"Time: {minutes:02d}:{seconds:02d} | Moves: {self.moves}", True, WHITE)
+            # Stats background
+            stats_bg = pygame.Surface((400, 60))
+            stats_bg.set_alpha(150)
+            stats_bg.fill(DARK_GRAY)
+            stats_bg_rect = stats_bg.get_rect(center=(center_x, center_y - 20))
+            self.screen.blit(stats_bg, stats_bg_rect)
+            
+            stats_text = self.font_medium.render(f"Time: {minutes:02d}:{seconds:02d}  |  Moves: {self.moves}", True, WHITE)
             stats_rect = stats_text.get_rect(center=(center_x, center_y - 20))
             self.screen.blit(stats_text, stats_rect)
             
-            # New game prompt
-            prompt_text = self.font_medium.render("Press N for New Game", True, GREEN)
-            prompt_rect = prompt_text.get_rect(center=(center_x, center_y + 40))
-            self.screen.blit(prompt_text, prompt_rect)
+            # Performance rating
+            if self.moves <= self.total_pairs + 2:
+                rating = "PERFECT!"
+                rating_color = YELLOW
+            elif self.moves <= self.total_pairs + 5:
+                rating = "GREAT!"
+                rating_color = GREEN
+            else:
+                rating = "GOOD!"
+                rating_color = BLUE
+            
+            rating_text = self.font_medium.render(rating, True, rating_color)
+            rating_rect = rating_text.get_rect(center=(center_x, center_y + 20))
+            self.screen.blit(rating_text, rating_rect)
+            
+            # Draw win overlay button - only New Game
+            if self.win_new_game_button:
+                self.win_new_game_button.draw(self.screen, self.font_small)
+            
+            # Simplified button instructions
+            hand_data = self.hand_tracker.hand_data
+            if hand_data.active and hand_data.hands_count > 0:
+                button_instruction = "Hover and PINCH to select | Mouse click also works"
+                instruction_color = GREEN
+                
+                # Additional hand status
+                hand_status = f"Hand Tracking: {hand_data.hands_count} hands detected"
+                status_text = self.font_small.render(hand_status, True, GREEN)
+                status_rect = status_text.get_rect(center=(center_x, center_y + 170))
+                self.screen.blit(status_text, status_rect)
+            else:
+                button_instruction = "Click button to select (Mouse mode)"
+                instruction_color = LIGHT_GRAY
+                
+                # Hand tracking offline status
+                hand_status = "Hand tracking not available - using mouse"
+                status_text = self.font_small.render(hand_status, True, LIGHT_GRAY)
+                status_rect = status_text.get_rect(center=(center_x, center_y + 170))
+                self.screen.blit(status_text, status_rect)
+            
+            instruction_text = self.font_small.render(button_instruction, True, instruction_color)
+            instruction_rect = instruction_text.get_rect(center=(center_x, center_y + 150))
+            self.screen.blit(instruction_text, instruction_rect)
     
     def draw_game(self):
         """Draw memory game specific elements"""
+        current_width, current_height = self.get_current_screen_size()
+        
         # Draw title
         title_text = self.font_title.render("MEMORY GAME", True, WHITE)
         title_x = 250  # Positioned after logos
@@ -530,19 +824,33 @@ class MemoryGame(BaseGame):
         for card in self.cards:
             card.draw(self.screen, self.font_large, self.background_manager.time_elapsed, self.game_state)
         
-        # Draw hand indicator (only during playing)
-        if self.game_state == "playing":
+        # Draw hand indicator (during playing and game over states)
+        if self.game_state in ["playing", "game_over"]:
             hand_data = self.hand_tracker.hand_data
             if hand_data.active and hand_data.hands_count > 0:
                 pulse = math.sin(self.background_manager.time_elapsed * 6) * 3 + 8
                 hand_color = GREEN if not hand_data.pinching else YELLOW
-                pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), int(pulse))
-                pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), int(pulse), 2)
+                
+                # Make hand indicator more visible during win overlay
+                if self.game_state == "game_over" and self.game_won:
+                    # Larger and brighter indicator for win overlay
+                    pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), int(pulse + 2))
+                    pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), int(pulse + 2), 3)
+                    # Add inner glow
+                    glow_surface = pygame.Surface((int(pulse * 2 + 20), int(pulse * 2 + 20)))
+                    glow_surface.set_alpha(80)
+                    pygame.draw.circle(glow_surface, hand_color, 
+                                     (int(pulse + 10), int(pulse + 10)), int(pulse + 5))
+                    self.screen.blit(glow_surface, (hand_data.x - int(pulse + 10), hand_data.y - int(pulse + 10)))
+                else:
+                    # Normal indicator for playing state
+                    pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), int(pulse))
+                    pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), int(pulse), 2)
         
-        # Draw game stats (only during playing and game over)
+        # Draw game stats (only during playing and game over) - Fixed: use dynamic screen size
         if self.game_state in ["playing", "game_over"]:
             stats_y = 600
-            center_x = WINDOW_WIDTH // 2
+            center_x = current_width // 2
             
             # Moves counter
             moves_text = self.font_medium.render(f"Moves: {self.moves}", True, WHITE)
@@ -566,27 +874,27 @@ class MemoryGame(BaseGame):
         # Draw game state overlay
         self.draw_game_state_overlay()
         
-        # Draw new game button
-        self.new_game_button.draw(self.screen, self.font_small)
+        # Draw new game button (only when not in game over state)
+        if self.game_state != "game_over":
+            self.new_game_button.draw(self.screen, self.font_small)
         
-        # Instructions
+        # Instructions - Fixed: use dynamic screen size
         if self.game_state == "playing":
             instructions = [
                 "Hover over cards and PINCH to flip them",
                 "Match pairs of identical symbols",
                 "Mouse click also works | N: New Game | ESC: Back to Menu"
             ]
-            instruction_y = self.screen.get_height() - 80
-            center_x = WINDOW_WIDTH // 2
+            instruction_y = current_height - 80
+            center_x = current_width // 2
             for i, instruction in enumerate(instructions):
                 text = self.font_small.render(instruction, True, LIGHT_GRAY)
                 text_rect = text.get_rect(center=(center_x, instruction_y + i * 25))
                 self.screen.blit(text, text_rect)
-        
-        # Draw status during playing
-        if self.game_state == "playing":
+            
+            # Hand tracking status for playing mode
             hand_data = self.hand_tracker.hand_data
-            center_x = WINDOW_WIDTH // 2
+            center_x = current_width // 2
             
             if self.checking_match:
                 status = "Checking match..."
@@ -602,3 +910,30 @@ class MemoryGame(BaseGame):
             status_text = self.font_medium.render(status, True, status_color)
             status_rect = status_text.get_rect(center=(center_x, 680))
             self.screen.blit(status_text, status_rect)
+        
+        # ALWAYS draw hand indicator on top of everything (including overlays)
+        hand_data = self.hand_tracker.hand_data
+        if hand_data.active and hand_data.hands_count > 0:
+            pulse = math.sin(self.background_manager.time_elapsed * 6) * 3 + 8
+            hand_color = GREEN if not hand_data.pinching else YELLOW
+            
+            # Enhanced visibility for win overlay
+            if self.game_state == "game_over" and self.game_won:
+                # Extra bright and large indicator
+                glow_size = int(pulse * 2 + 10)
+                glow_surface = pygame.Surface((glow_size * 2, glow_size * 2))
+                glow_surface.set_alpha(60)
+                pygame.draw.circle(glow_surface, hand_color, (glow_size, glow_size), glow_size)
+                self.screen.blit(glow_surface, (hand_data.x - glow_size, hand_data.y - glow_size))
+                
+                # Main indicator (larger)
+                main_size = int(pulse + 4)
+                pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), main_size)
+                pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), main_size, 4)
+                
+                # Inner highlight
+                pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), max(2, main_size - 6))
+            else:
+                # Normal indicator for other states
+                pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), int(pulse))
+                pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), int(pulse), 2)

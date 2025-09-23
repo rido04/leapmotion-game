@@ -1,12 +1,13 @@
 # core/hand_tracker.py
 """
 Hand tracking functionality using Ultra Leap
-Extracted from the original tic_tac_toe.py for reusability
+Fixed to support dynamic screen sizes
 """
 
 import leap
 import time
 import threading
+import pygame
 from dataclasses import dataclass
 from .constants import WINDOW_WIDTH, WINDOW_HEIGHT, HAND_PINCH_THRESHOLD, HAND_TRACKING_UPDATE_RATE
 
@@ -21,11 +22,24 @@ class HandData:
 
 
 class HandTracker:
-    def __init__(self):
+    def __init__(self, screen=None):
         self.hand_data = HandData()
         self.connection = None
         self.running = False
         self.thread = None
+        self.screen = screen  # Reference to screen for dynamic sizing
+        
+    def get_screen_size(self):
+        """Get current screen dimensions"""
+        if self.screen:
+            return self.screen.get_width(), self.screen.get_height()
+        else:
+            # Fallback to pygame display
+            current_screen = pygame.display.get_surface()
+            if current_screen:
+                return current_screen.get_width(), current_screen.get_height()
+            else:
+                return WINDOW_WIDTH, WINDOW_HEIGHT
         
     def start(self):
         """Start hand tracking in a separate thread"""
@@ -43,7 +57,7 @@ class HandTracker:
         """Separate thread for hand tracking"""
         print("Starting hand tracking thread...")
         
-        listener = TrackingListener(self.hand_data)
+        listener = TrackingListener(self.hand_data, self)  # Pass self to listener
         connection = leap.Connection()
         connection.add_listener(listener)
         
@@ -62,8 +76,9 @@ class HandTracker:
 
 
 class TrackingListener(leap.Listener):
-    def __init__(self, hand_data):
+    def __init__(self, hand_data, hand_tracker):
         self.hand_data = hand_data
+        self.hand_tracker = hand_tracker  # Reference to get current screen size
         self.last_update = 0
         
     def on_connection_event(self, event):
@@ -87,13 +102,22 @@ class TrackingListener(leap.Listener):
             hand = event.hands[0]
             palm = hand.palm
             
-            # Convert coordinates
-            self.hand_data.x = int((palm.position.x + 200) * (WINDOW_WIDTH / 400))
-            self.hand_data.y = int((400 - palm.position.y) * (WINDOW_HEIGHT / 400))
+            # Get current screen dimensions dynamically
+            screen_width, screen_height = self.hand_tracker.get_screen_size()
             
-            # Keep within bounds
-            self.hand_data.x = max(0, min(WINDOW_WIDTH, self.hand_data.x))
-            self.hand_data.y = max(0, min(WINDOW_HEIGHT, self.hand_data.y))
+            # Convert coordinates using current screen size
+            self.hand_data.x = int((palm.position.x + 200) * (screen_width / 400))
+            self.hand_data.y = int((400 - palm.position.y) * (screen_height / 400))
+            
+            # Keep within bounds using current screen size
+            self.hand_data.x = max(0, min(screen_width - 1, self.hand_data.x))
+            self.hand_data.y = max(0, min(screen_height - 1, self.hand_data.y))
+            
+            # Debug output when coordinates are at edges
+            margin = 50
+            if (self.hand_data.x <= margin or self.hand_data.x >= screen_width - margin or
+                self.hand_data.y <= margin or self.hand_data.y >= screen_height - margin):
+                print(f"Hand near edge: ({self.hand_data.x}, {self.hand_data.y}) Screen: {screen_width}x{screen_height}")
             
             # Detect pinch
             if len(hand.digits) >= 2:
