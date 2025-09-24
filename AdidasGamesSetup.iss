@@ -5,10 +5,8 @@
 ; Basic app info
 AppName=Adidas Interactive Games
 AppVersion=1.0
-AppPublisher=Your Company Name
-AppPublisherURL=https://yourwebsite.com
-AppSupportURL=https://yourwebsite.com/support
-AppUpdatesURL=https://yourwebsite.com/updates
+AppPublisher=MCMMediaNetworks
+AppPublisherURL=https://medialoger.com
 
 ; Installation settings
 DefaultDirName={autopf}\Adidas Interactive Games
@@ -43,9 +41,9 @@ Source: "main.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "assets\*"; DestDir: "{app}\assets"; Flags: recursesubdirs createallsubdirs
 Source: "games\*"; DestDir: "{app}\games"; Flags: recursesubdirs createallsubdirs
 Source: "core\*"; DestDir: "{app}\core"; Flags: recursesubdirs createallsubdirs
-Source: "3-foil.png"; DestDir: "{app}"; Flags: ignoreversion
-Source: "3-stripes.png"; DestDir: "{app}"; Flags: ignoreversion
-Source: "bata-putih.jpg"; DestDir: "{app}"; Flags: ignoreversion
+Source: "3-foil-w.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "3-stripes-w.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bata-3.jpg"; DestDir: "{app}"; Flags: ignoreversion
 Source: "3-foil.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 

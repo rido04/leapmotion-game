@@ -287,7 +287,7 @@ class MainMenu:
         self.screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
         pygame.mouse.set_visible(False)  # Hide cursor for kiosk mode
         
-        pygame.display.set_caption("Hand Tracking Games - Enhanced Main Menu")
+        pygame.display.set_caption("Hand Tracking Games")
         self.clock = pygame.time.Clock()
         
         # Enhanced visual elements - remove custom background colors
@@ -556,7 +556,7 @@ class MainMenu:
             self.screen.blit(text_surface, text_rect)
         
         # Draw version info
-        version_text = "Enhanced v2.0 with PNG Icons"
+        version_text = "Developed and maintained by MCMMediaNetworks development team"
         version_surface = pygame.font.Font(None, 18).render(version_text, True, (80, 100, 120))
         version_rect = version_surface.get_rect(bottomright=(current_width - 20, current_height - 10))
         self.screen.blit(version_surface, version_rect)

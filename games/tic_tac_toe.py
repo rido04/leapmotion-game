@@ -13,7 +13,7 @@ from core import *
 class TicTacToeGame(BaseGame):
     def __init__(self, screen=None):
         super().__init__(screen)
-        pygame.display.set_caption("Tic Tac Toe - Dark Edition")
+        pygame.display.set_caption("Tic Tac Toe")
         
         # Game state
         self.board = [['' for _ in range(3)] for _ in range(3)]
@@ -426,11 +426,6 @@ class TicTacToeGame(BaseGame):
         title_text = self.font_title.render("TIC TAC TOE", True, self.colors['text_main'])
         title_rect = title_text.get_rect(center=(current_width // 2, 60))
         self.screen.blit(title_text, title_rect)
-        
-        # Subtitle
-        subtitle_text = self.font_small.render("DARK EDITION", True, self.colors['text_accent'])
-        subtitle_rect = subtitle_text.get_rect(center=(current_width // 2, 90))
-        self.screen.blit(subtitle_text, subtitle_rect)
         
         # Draw grid and symbols
         self.draw_grid()
