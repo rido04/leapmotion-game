@@ -400,7 +400,7 @@ class TicTacToeGame(BaseGame):
                     base_color = self.colors['o_color'] if not hand_data.pinching else self.colors['x_color']
                     outer_color = (255, 255, 255)
                 
-                # Draw hand indicator with enhanced visibility
+                # Draw hand indicator with enhanced visibility 
                 # Outer ring for better visibility on overlay
                 pygame.draw.circle(self.screen, outer_color, (hand_x, hand_y), 15, 2)
                 # Inner colored ring

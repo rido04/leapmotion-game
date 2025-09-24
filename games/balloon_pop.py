@@ -531,12 +531,12 @@ class BalloonPopGame(BaseGame):
         """Create enhanced game buttons"""
         current_width, current_height = self.get_current_screen_size()
         
-        # Main restart button (always visible, top right) - moved further right
+        # Main restart button
         self.restart_button = AnimatedButton(
             current_width - 280, 20, 130, 50, "New Game", PURPLE, GREEN
         )
         
-        # Game over overlay button (center screen)
+        # Game over overlay button
         self.game_over_restart_button = AnimatedButton(
             current_width//2 - 100, current_height//2 + 60, 200, 60, 
             "Play Again", (50, 50, 50), (100, 255, 100)

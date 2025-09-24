@@ -275,10 +275,10 @@ class FruitNinjaGame(BaseGame):
         current_width, current_height = self.get_current_screen_size()
         
         self.reset_button_normal = AnimatedButton(
-            current_width - 580, 20, 120, 50, "🎯 Reset", (255, 165, 0), (255, 200, 100)
+            current_width - 580, 20, 120, 50, "Reset", (255, 165, 0), (255, 200, 100)
         )
         self.reset_button_game_over = AnimatedButton(
-            current_width//2 - 75, current_height//2 + 80, 150, 60, "🎯 Play Again", (255, 165, 0), (255, 200, 100)
+            current_width//2 - 75, current_height//2 + 80, 150, 60, "Play Again", (255, 165, 0), (255, 200, 100)
         )
     
     def recalculate_game_layout(self):
@@ -642,7 +642,7 @@ class FruitNinjaGame(BaseGame):
         if self.frenzy_mode:
             subtitle_text = self.font_small.render("FRENZY MODE!", True, YELLOW)
         elif self.frenzy_cooldown > 0:
-            subtitle_text = self.font_small.render("🛡️ COOLDOWN PROTECTION 🛡️", True, BLUE)
+            subtitle_text = self.font_small.render("COOLDOWN PROTECTION", True, BLUE)
         else:
             subtitle_text = self.font_small.render("Swipe Challenge", True, (255, 165, 0))
         subtitle_x = title_x
@@ -739,13 +739,13 @@ class FruitNinjaGame(BaseGame):
             draw_surface.blit(final_score_text, score_rect)
             
             # Performance message
-            if self.score >= 500:
+            if self.score >= 3000:
                 message = "NINJA MASTER! Incredible skills!"
                 message_color = GREEN
-            elif self.score >= 300:
+            elif self.score >= 1500:
                 message = "FRUIT WARRIOR! Great job!"
                 message_color = YELLOW
-            elif self.score >= 150:
+            elif self.score >= 500:
                 message = "GOOD SLICING! Keep practicing!"
                 message_color = (255, 165, 0)
             else:
