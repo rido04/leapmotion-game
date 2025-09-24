@@ -34,7 +34,7 @@ AVAILABLE_GAMES = [
         'name': 'Balloon Pop',
         'module': 'games.balloon_pop',
         'class': 'BalloonPopGame',
-        'description': 'Pop balloons while avoiding bombs',
+        'description': 'Pop balloons before they float away',
         'preview_color': (255, 192, 203)  # Pink
     }
 ]
