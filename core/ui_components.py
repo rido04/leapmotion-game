@@ -1,4 +1,3 @@
-# core/ui_components.py
 """
 Reusable UI components for all games
 Extracted from tic_tac_toe.py for modularity
@@ -9,6 +8,15 @@ import random
 import math
 import os
 from .constants import *
+
+# Import OpenCV untuk video support
+try:
+    import cv2
+    CV2_AVAILABLE = True
+    print("OpenCV loaded - video background support enabled")
+except ImportError:
+    CV2_AVAILABLE = False
+    print("OpenCV not available - video background disabled")
 
 
 class AnimatedButton:
@@ -132,45 +140,130 @@ class ParticleSystem:
                        (particle['x'] - particle['size'], particle['y'] - particle['size']))
 
 
-class BackgroundManager:
+class VideoBackgroundManager:
     def __init__(self):
         self.background_image = None
-        self.use_image_background = True
+        self.video_cap = None
+        self.video_surface = None
+        self.background_mode = "gradient"  # "gradient", "image", "video"
         self.time_elapsed = 0
-        self.load_background()
+        self.frame_delay = 0
+        self.video_fps = 30  # Default FPS
+        
+        self.load_background_assets()
     
-    def load_background(self):
-        """Load background image from common filenames"""
+    def load_background_assets(self):
+        """Load semua background assets: image dan video"""
+        # Load background image
+        self.load_background_image()
+        
+        # Load background video jika OpenCV tersedia
+        if CV2_AVAILABLE:
+            self.load_background_video()
+        
+        # Set default mode berdasarkan asset yang tersedia
+        if self.video_cap is not None:
+            self.background_mode = "video"
+            print("Video background loaded - using video mode")
+        elif self.background_image is not None:
+            self.background_mode = "image" 
+            print("Image background loaded - using image mode")
+        else:
+            self.background_mode = "gradient"
+            print("Using gradient background mode")
+    
+    def load_background_image(self):
+        """Load background image dari nama file umum"""
         possible_backgrounds = [
             "background.png", "background.jpg", "background.jpeg",
-            "bata-putih.jpg", "bg.jpg", "bg.jpeg",
+            "bata-3.jpg", "bg.jpg", "bg.jpeg",
             "wallpaper.png", "wallpaper.jpg", "wallpaper.jpeg"
         ]
         
-        background_loaded = False
         for bg_file in possible_backgrounds:
             if os.path.exists(bg_file):
                 try:
                     self.background_image = pygame.image.load(bg_file).convert()
-                    print(f"Background loaded: {bg_file}")
-                    background_loaded = True
+                    print(f"Background image loaded: {bg_file}")
                     break
                 except pygame.error as e:
                     print(f"Error loading background {bg_file}: {e}")
                     continue
+    
+    def load_background_video(self):
+        """Load background video menggunakan OpenCV"""
+        video_filename = "white.gif"
         
-        if not background_loaded:
-            print("No background image found - using gradient background")
-            self.use_image_background = False
+        if os.path.exists(video_filename):
+            try:
+                self.video_cap = cv2.VideoCapture(video_filename)
+                
+                if self.video_cap.isOpened():
+                    # Get video properties
+                    self.video_fps = int(self.video_cap.get(cv2.CAP_PROP_FPS))
+                    frame_count = int(self.video_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                    
+                    print(f"Video loaded: {video_filename}")
+                    print(f"Video FPS: {self.video_fps}, Total frames: {frame_count}")
+                else:
+                    print(f"Cannot open video file: {video_filename}")
+                    self.video_cap = None
+                    
+            except Exception as e:
+                print(f"Error loading video {video_filename}: {e}")
+                self.video_cap = None
+        else:
+            print(f"Video file not found: {video_filename}")
+    
+    def get_current_video_frame(self, screen_width, screen_height):
+        """Get current video frame dan scale sesuai screen size"""
+        if not self.video_cap or not CV2_AVAILABLE:
+            return None
+        
+        # Calculate frame timing
+        target_frame_delay = 1000 // self.video_fps  # milliseconds
+        current_time = pygame.time.get_ticks()
+        
+        if current_time - self.frame_delay >= target_frame_delay:
+            ret, frame = self.video_cap.read()
+            
+            if not ret:  # End of video, loop back
+                self.video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = self.video_cap.read()
+            
+            if ret:
+                # Convert BGR ke RGB
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                
+                # Resize frame untuk match screen resolution
+                frame = cv2.resize(frame, (screen_width, screen_height))
+                
+                # Convert ke pygame surface
+                frame = frame.swapaxes(0, 1)  # Transpose untuk pygame
+                self.video_surface = pygame.surfarray.make_surface(frame)
+                
+                self.frame_delay = current_time
+        
+        return self.video_surface
     
     def toggle_background_mode(self):
-        """Toggle between image and gradient background"""
+        """Cycle through available background modes"""
+        modes = []
+        
+        if self.video_cap and CV2_AVAILABLE:
+            modes.append("video")
         if self.background_image:
-            self.use_image_background = not self.use_image_background
-            mode = "Image" if self.use_image_background else "Gradient"
-            print(f"Background mode switched to: {mode}")
+            modes.append("image")
+        modes.append("gradient")  # Always available
+        
+        if len(modes) > 1:
+            current_index = modes.index(self.background_mode)
+            next_index = (current_index + 1) % len(modes)
+            self.background_mode = modes[next_index]
+            
+            print(f"Background mode switched to: {self.background_mode}")
         else:
-            print("No background image available - staying in gradient mode")
+            print("Only one background mode available")
     
     def draw_gradient_background(self, screen):
         """Draw animated gradient background"""
@@ -189,25 +282,51 @@ class BackgroundManager:
             pygame.draw.line(screen, color, (0, y), (current_width, y))
     
     def draw(self, screen):
-        """Draw background - either image or gradient"""
+        """Draw background berdasarkan mode yang aktif"""
         self.time_elapsed += 0.016  # ~60fps
         
         current_width = screen.get_width()
         current_height = screen.get_height()
         
-        if self.use_image_background and self.background_image:
-            # Scale background image to fit screen
+        if self.background_mode == "video" and self.video_cap and CV2_AVAILABLE:
+            # Draw video background
+            video_frame = self.get_current_video_frame(current_width, current_height)
+            
+            if video_frame:
+                screen.blit(video_frame, (0, 0))
+                
+                # Add slight dark overlay untuk text visibility yang lebih baik
+                overlay = pygame.Surface((current_width, current_height))
+                overlay.set_alpha(60)  # Lebih transparan dari image overlay
+                overlay.fill(BLACK)
+                screen.blit(overlay, (0, 0))
+            else:
+                # Fallback ke gradient jika video frame tidak tersedia
+                self.draw_gradient_background(screen)
+                
+        elif self.background_mode == "image" and self.background_image:
+            # Draw image background
             scaled_bg = pygame.transform.scale(self.background_image, (current_width, current_height))
             screen.blit(scaled_bg, (0, 0))
             
-            # Add dark overlay for better text visibility
             overlay = pygame.Surface((current_width, current_height))
             overlay.set_alpha(120)
             overlay.fill(BLACK)
             screen.blit(overlay, (0, 0))
+            
         else:
-            # Draw animated gradient background
+            # Draw gradient background
             self.draw_gradient_background(screen)
+    
+    def cleanup(self):
+        """Cleanup resources saat aplikasi ditutup"""
+        if self.video_cap:
+            self.video_cap.release()
+            print("Video resources cleaned up")
+
+
+# Alias untuk backward compatibility
+BackgroundManager = VideoBackgroundManager
 
 
 class LogoManager:
@@ -218,9 +337,9 @@ class LogoManager:
     
     def load_logos(self):
         """Load PNG logo images"""
-        logo1_filename = "3-stripes.png"
-        logo2_filename = "3-foil.png"
-        logo_size = (80, 80)
+        logo1_filename = "3-stripes-w.png"
+        logo2_filename = "3-foil-w.png"
+        logo_size = (90, 90)
         
         try:
             # Load first logo
@@ -288,7 +407,7 @@ class LogoManager:
         
         return surface
     
-    def draw(self, screen, x=30, y_offset1=40, y_offset2=20):
+    def draw(self, screen, x=30, y_offset1=37, y_offset2=20):
         """Draw both logos"""
         if self.logo1_surface:
             screen.blit(self.logo1_surface, (x, y_offset1))

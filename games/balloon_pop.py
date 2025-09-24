@@ -1,8 +1,8 @@
-# games/balloon_pop.py
+# games/balloon_pop.py -  VERSION
 """
 Balloon Pop Game using hand tracking
 Pop balloons as they float up from the bottom
-Fixed fullscreen layout alignment issues
+: Better pop animations, optimized spawn zones, improved performance
 """
 
 import pygame
@@ -13,95 +13,251 @@ from .base_game import BaseGame
 from core import *
 
 
+class PopEffect:
+    """Separate class for enhanced pop effects - OPTIMIZED"""
+    def __init__(self, x, y, balloon_color, balloon_size):
+        self.x = x
+        self.y = y
+        self.time = 0
+        self.duration = 0.8
+        self.balloon_color = balloon_color
+        self.size_multiplier = {'small': 0.8, 'medium': 1.0, 'large': 1.2}.get(balloon_size, 1.0)
+        
+        # Create particle bursts
+        self.particles = []
+        particle_count = 8  # Fixed count for performance
+        for i in range(particle_count):
+            angle = (i / particle_count) * math.pi * 2
+            speed = random.uniform(60, 120) * self.size_multiplier
+            self.particles.append({
+                'start_x': x,
+                'start_y': y,
+                'vx': math.cos(angle) * speed,
+                'vy': math.sin(angle) * speed - random.uniform(20, 40),  # Slight upward bias
+                'color': self.get_particle_color(),
+                'size': random.randint(3, 6),
+                'life': 1.0
+            })
+        
+        # Shockwave effect
+        self.shockwave_radius = 0
+        self.max_shockwave_radius = 60 * self.size_multiplier
+        
+        # Star burst effect
+        self.stars = []
+        for i in range(5):
+            angle = (i / 5) * math.pi * 2 + random.uniform(-0.3, 0.3)
+            distance = random.uniform(20, 40) * self.size_multiplier
+            self.stars.append({
+                'x': x + math.cos(angle) * distance,
+                'y': y + math.sin(angle) * distance,
+                'size': random.randint(4, 8),
+                'rotation': 0,
+                'color': (255, 255, 100)
+            })
+    
+    def get_particle_color(self):
+        """Get appropriate particle color based on balloon color"""
+        color_map = {
+            'orange': [(255, 200, 100), (255, 150, 0), (255, 100, 0)],
+            'red': [(255, 100, 100), (255, 50, 50), (200, 0, 0)],
+            'blue': [(100, 150, 255), (50, 100, 255), (0, 50, 200)],
+            'cyan': [(100, 255, 255), (0, 200, 255), (0, 150, 200)],
+            'pink': [(255, 150, 200), (255, 100, 150), (200, 50, 100)],
+            'gray': [(200, 200, 200), (150, 150, 150), (100, 100, 100)]
+        }
+        colors = color_map.get(self.balloon_color, [(255, 255, 255), (200, 200, 200)])
+        return random.choice(colors)
+    
+    def update(self, dt):
+        """Update pop effect animation"""
+        self.time += dt
+        progress = self.time / self.duration
+        
+        if progress >= 1.0:
+            return False
+        
+        # Update particles
+        for particle in self.particles:
+            particle['start_x'] += particle['vx'] * dt
+            particle['start_y'] += particle['vy'] * dt
+            particle['vy'] += 150 * dt  # Gravity
+            particle['life'] = 1.0 - (progress * 1.5)  # Fade out
+        
+        # Update shockwave
+        self.shockwave_radius = self.max_shockwave_radius * min(1.0, progress * 3)
+        
+        # Update stars
+        for star in self.stars:
+            star['rotation'] += dt * 360  # Rotate stars
+        
+        return True
+    
+    def draw(self, screen):
+        """Draw enhanced pop effect"""
+        progress = self.time / self.duration
+        
+        # Draw shockwave (ring effect)
+        if progress < 0.3:
+            shockwave_alpha = int(255 * (1 - progress / 0.3))
+            if self.shockwave_radius > 0 and shockwave_alpha > 0:
+                # Create temporary surface for alpha blending
+                shockwave_surface = pygame.Surface((200, 200), pygame.SRCALPHA)
+                pygame.draw.circle(shockwave_surface, (255, 255, 255, shockwave_alpha//2), 
+                                 (100, 100), int(self.shockwave_radius), 3)
+                screen.blit(shockwave_surface, 
+                           (self.x - 100, self.y - 100), 
+                           special_flags=pygame.BLEND_ALPHA_SDL2)
+        
+        # Draw particles
+        for particle in self.particles:
+            if particle['life'] > 0:
+                alpha = max(0, int(255 * particle['life']))
+                size = max(1, int(particle['size'] * particle['life']))
+                
+                # Simple particle with fade
+                color_with_alpha = particle['color'] + (alpha,)
+                pygame.draw.circle(screen, particle['color'], 
+                                 (int(particle['start_x']), int(particle['start_y'])), size)
+        
+        # Draw rotating stars
+        if progress < 0.5:
+            star_alpha = 1.0 - (progress / 0.5)
+            for star in self.stars:
+                star_size = int(star['size'] * star_alpha)
+                if star_size > 0:
+                    self.draw_star(screen, int(star['x']), int(star['y']), 
+                                 star_size, star['rotation'], star['color'])
+    
+    def draw_star(self, screen, x, y, size, rotation, color):
+        """Draw a simple star shape"""
+        # Simple 4-point star (plus shape) for performance
+        points = []
+        for i in range(4):
+            angle = math.radians(rotation + i * 90)
+            point_x = x + math.cos(angle) * size
+            point_y = y + math.sin(angle) * size
+            points.append((int(point_x), int(point_y)))
+            
+            # Add inner points for star shape
+            inner_angle = math.radians(rotation + i * 90 + 45)
+            inner_size = size * 0.4
+            inner_x = x + math.cos(inner_angle) * inner_size
+            inner_y = y + math.sin(inner_angle) * inner_size
+            points.append((int(inner_x), int(inner_y)))
+        
+        if len(points) >= 6:
+            pygame.draw.polygon(screen, color, points[:6])
+
+
 class Balloon:
-    """Individual balloon object"""
-    def __init__(self, x, y, balloon_image, color_name, screen_width, screen_height):
-        self.original_image = balloon_image
-        self.image = balloon_image
-        self.rect = self.image.get_rect()
-        self.rect.centerx = x
-        self.rect.bottom = y
+    """Individual balloon object - """
+    def __init__(self, x, y, balloon_images_dict, color_name, screen_width, screen_height):
+        # Pre-scaled images dictionary (small, medium, large, hover)
+        self.images = balloon_images_dict[color_name]
         self.color_name = color_name
         
         # Store screen dimensions for boundary checking
         self.screen_width = screen_width
         self.screen_height = screen_height
         
-        # Movement properties
-        self.speed_y = random.uniform(1.0, 3.0)  # Upward speed
-        self.speed_x = random.uniform(-0.5, 0.5)  # Slight horizontal drift
-        self.float_amplitude = random.uniform(10, 20)  # Floating side-to-side
-        self.float_frequency = random.uniform(0.5, 1.5)
+        # Movement properties with slight variation
+        base_speed = random.uniform(1.2, 2.8)
+        self.speed_y = base_speed
+        self.speed_x = random.uniform(-0.3, 0.3)  # Reduced horizontal drift
+        self.float_amplitude = random.uniform(8, 15)  # Reduced floating
+        self.float_frequency = random.uniform(0.8, 1.2)
         self.initial_x = x
         
         # Visual properties
-        self.scale = random.uniform(0.8, 1.2)
+        self.scale_type = random.choice(['small', 'medium', 'large'])
+        self.current_image = self.images[self.scale_type]
+        self.rect = self.current_image.get_rect()
+        self.rect.centerx = x
+        self.rect.bottom = y
+        
+        # Enhanced animation properties
         self.rotation = 0
-        self.rotation_speed = random.uniform(-2, 2)
+        self.rotation_speed = random.uniform(-1.5, 1.5)  # Slower rotation
         self.bob_offset = random.uniform(0, math.pi * 2)
+        self.bounce_amplitude = random.uniform(0.5, 1.5)  # Vertical bounce
+        self.bounce_frequency = random.uniform(2, 4)
         
         # State
         self.popped = False
         self.pop_animation = 0.0
+        self.is_hovering = False
         self.hover_scale = 1.0
+        self.target_hover_scale = 1.0
         self.glow_animation = 0
+        self.rotated_image = None
+        self.rotation_cache_angle = 0
         
-        # Apply initial scaling
-        self.apply_scale()
+        # Enhanced visual feedback
+        self.pulse_animation = random.uniform(0, math.pi * 2)  # Random start phase
+        self.shine_offset = random.uniform(0, 1000)
         
-        # Score value based on speed (faster = more points)
-        self.points = int(50 + (self.speed_y - 1.0) * 30)
-    
-    def apply_scale(self):
-        """Apply current scale to the balloon image"""
-        new_width = int(self.original_image.get_width() * self.scale * self.hover_scale)
-        new_height = int(self.original_image.get_height() * self.scale * self.hover_scale)
-        if new_width > 0 and new_height > 0:
-            self.image = pygame.transform.scale(self.original_image, (new_width, new_height))
-            old_center = self.rect.center
-            self.rect = self.image.get_rect()
-            self.rect.center = old_center
+        # Score value based on speed and size (enhanced calculation)
+        size_multiplier = {'small': 1.5, 'medium': 1.0, 'large': 0.7}[self.scale_type]
+        speed_bonus = (self.speed_y - 1.2) / 1.6  # Normalized speed bonus
+        self.points = int(40 + speed_bonus * 60 * size_multiplier)
+        
+        # Collision optimization
+        self.collision_radius = {'small': 25, 'medium': 35, 'large': 45}[self.scale_type]
     
     def update(self, dt, time_elapsed):
-        """Update balloon position and animations"""
+        """Update balloon position and animations - """
         if self.popped:
-            self.pop_animation += dt * 5
-            return self.pop_animation < 1.0  # Return False when animation is done
+            self.pop_animation += dt * 4  # Slightly slower for better visibility
+            return self.pop_animation < 1.0
         
-        # Update position
-        self.rect.y -= self.speed_y
+        # Enhanced movement with bounce
+        old_y = self.rect.y
+        vertical_bounce = math.sin(time_elapsed * self.bounce_frequency + self.bob_offset) * self.bounce_amplitude
+        self.rect.y -= self.speed_y + vertical_bounce * 0.1
         
-        # Floating motion
+        # Smoother floating motion
         float_offset = math.sin(time_elapsed * self.float_frequency + self.bob_offset) * self.float_amplitude
-        self.rect.centerx = self.initial_x + self.speed_x * time_elapsed + float_offset
+        wind_effect = math.sin(time_elapsed * 0.3) * 5  # Gentle wind
+        self.rect.centerx = self.initial_x + self.speed_x * time_elapsed + float_offset + wind_effect
         
-        # Keep balloon within screen bounds horizontally
-        if self.rect.left < 0:
-            self.rect.left = 0
-        elif self.rect.right > self.screen_width:
-            self.rect.right = self.screen_width
+        # Keep balloon within safe bounds (not too close to edges)
+        margin = 80  # Increased margin for better hand tracking
+        if self.rect.centerx < margin:
+            self.rect.centerx = margin
+        elif self.rect.centerx > self.screen_width - margin:
+            self.rect.centerx = self.screen_width - margin
         
-        # Update rotation
-        self.rotation += self.rotation_speed * dt
+        # Smooth rotation with cache optimization
+        new_rotation = self.rotation + self.rotation_speed * dt
+        if abs(new_rotation - self.rotation_cache_angle) > 8:
+            self.rotation = new_rotation
+            if abs(self.rotation) > 2:
+                self.rotated_image = pygame.transform.rotate(self.current_image, self.rotation)
+                self.rotation_cache_angle = self.rotation
+            else:
+                self.rotated_image = None
         
-        # Update hover scale animation
-        target_hover = 1.0
-        self.hover_scale += (target_hover - self.hover_scale) * 8 * dt
+        # Enhanced hover scaling
+        self.target_hover_scale = 1.15 if self.is_hovering else 1.0
+        scale_speed = 8.0 * dt
+        if abs(self.hover_scale - self.target_hover_scale) > 0.01:
+            if self.hover_scale < self.target_hover_scale:
+                self.hover_scale = min(self.target_hover_scale, self.hover_scale + scale_speed)
+            else:
+                self.hover_scale = max(self.target_hover_scale, self.hover_scale - scale_speed)
         
-        # Update glow animation
-        self.glow_animation += dt * 3
+        # Update animations
+        self.glow_animation += dt * 4
+        self.pulse_animation += dt * 3
         
-        # Apply scaling
-        self.apply_scale()
-        
-        # Remove balloon if it goes off screen
         return self.rect.bottom > -100
     
     def set_hover(self, hovering):
-        """Set hover state for visual feedback"""
-        if hovering and not self.popped:
-            self.hover_scale = 1.1
-            self.glow_animation = 0  # Reset glow
+        """Set hover state for visual feedback - """
+        if hovering != self.is_hovering and not self.popped:
+            self.is_hovering = hovering
+            self.glow_animation = 0
     
     def pop(self):
         """Pop the balloon"""
@@ -110,480 +266,745 @@ class Balloon:
             return True
         return False
     
-    def check_collision(self, x, y, radius=30):
-        """Check if point is within balloon collision area"""
+    def check_collision(self, x, y, radius=None):
+        """Check if point is within balloon collision area - OPTIMIZED"""
         if self.popped:
             return False
         
-        # Use balloon center for collision
-        balloon_center_x = self.rect.centerx
-        balloon_center_y = self.rect.centery
+        if radius is None:
+            radius = self.collision_radius
         
-        distance = math.sqrt((x - balloon_center_x) ** 2 + (y - balloon_center_y) ** 2)
-        return distance < radius
+        # Quick distance check
+        dx = x - self.rect.centerx
+        dy = y - self.rect.centery
+        distance_sq = dx * dx + dy * dy
+        return distance_sq < radius * radius
     
     def draw(self, screen, time_elapsed):
-        """Draw the balloon with effects"""
+        """Draw the balloon with enhanced effects"""
         if self.popped and self.pop_animation >= 1.0:
             return
         
         if self.popped:
-            # Pop animation - balloon disappears with particles
+            # Enhanced pop animation
             alpha = int(255 * (1 - self.pop_animation))
-            pop_scale = 1 + self.pop_animation * 2
-            
-            # Create temporary surface for alpha blending
-            temp_surface = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
-            temp_surface.blit(self.image, (0, 0))
-            temp_surface.set_alpha(alpha)
-            
-            # Scale for pop effect
-            if pop_scale != 1:
-                old_center = self.rect.center
-                scaled_width = int(self.image.get_width() * pop_scale)
-                scaled_height = int(self.image.get_height() * pop_scale)
-                if scaled_width > 0 and scaled_height > 0:
-                    temp_surface = pygame.transform.scale(temp_surface, (scaled_width, scaled_height))
-                    temp_rect = temp_surface.get_rect()
-                    temp_rect.center = old_center
-                    screen.blit(temp_surface, temp_rect)
-            else:
-                screen.blit(temp_surface, self.rect)
-            
-            # Draw pop particles
-            for i in range(5):
-                particle_angle = i * (math.pi * 2 / 5) + self.pop_animation * math.pi
-                particle_distance = self.pop_animation * 50
-                particle_x = self.rect.centerx + math.cos(particle_angle) * particle_distance
-                particle_y = self.rect.centery + math.sin(particle_angle) * particle_distance
-                particle_size = max(1, int(8 * (1 - self.pop_animation)))
-                particle_color = (255, 255 - int(self.pop_animation * 200), 0)
-                pygame.draw.circle(screen, particle_color, (int(particle_x), int(particle_y)), particle_size)
+            if alpha > 0:
+                # Scale down during pop
+                pop_scale = 1.0 + self.pop_animation * 0.3
+                temp_rect = self.rect.copy()
+                temp_rect.width = int(temp_rect.width * pop_scale)
+                temp_rect.height = int(temp_rect.height * pop_scale)
+                temp_rect.center = self.rect.center
+                
+                temp_surface = self.current_image.copy()
+                temp_surface.set_alpha(alpha)
+                screen.blit(temp_surface, temp_rect)
         else:
-            # Draw glow effect when hovered
-            if self.hover_scale > 1.05:
-                glow_radius = int(max(self.rect.width, self.rect.height) * 0.7)
-                glow_alpha = int(100 * (self.hover_scale - 1) * 10)
-                glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
-                pygame.draw.circle(glow_surface, (255, 255, 255, glow_alpha), (glow_radius, glow_radius), glow_radius)
-                screen.blit(glow_surface, (self.rect.centerx - glow_radius, self.rect.centery - glow_radius))
+            # Enhanced visual effects when not popped
+            current_image = self.current_image
+            draw_rect = self.rect.copy()
             
-            # Draw shadow
-            shadow_offset = 5
-            shadow_alpha = 100
-            shadow_surface = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
-            shadow_surface.fill((0, 0, 0, shadow_alpha))
-            shadow_rect = self.rect.copy()
-            shadow_rect.move_ip(shadow_offset, shadow_offset)
-            screen.blit(shadow_surface, shadow_rect)
+            # Apply hover scaling
+            if abs(self.hover_scale - 1.0) > 0.01:
+                old_center = draw_rect.center
+                draw_rect.width = int(draw_rect.width * self.hover_scale)
+                draw_rect.height = int(draw_rect.height * self.hover_scale)
+                draw_rect.center = old_center
             
-            # Draw main balloon with optional rotation
-            if abs(self.rotation) > 1:
-                rotated_image = pygame.transform.rotate(self.image, self.rotation)
-                rotated_rect = rotated_image.get_rect(center=self.rect.center)
-                screen.blit(rotated_image, rotated_rect)
+            # Enhanced glow effect when hovered
+            if self.is_hovering:
+                # Pulsing glow
+                glow_intensity = 0.7 + 0.3 * math.sin(self.glow_animation)
+                glow_radius = int(40 * glow_intensity)
+                glow_alpha = int(60 * glow_intensity)
+                
+                # Multi-layer glow for depth
+                for i, radius_mult in enumerate([1.2, 1.0, 0.8]):
+                    current_radius = int(glow_radius * radius_mult)
+                    current_alpha = int(glow_alpha * (0.3 + 0.7 * (1 - i * 0.3)))
+                    if current_radius > 0 and current_alpha > 0:
+                        glow_surface = pygame.Surface((current_radius * 2, current_radius * 2), pygame.SRCALPHA)
+                        pygame.draw.circle(glow_surface, (255, 255, 255, current_alpha//3), 
+                                         (current_radius, current_radius), current_radius)
+                        screen.blit(glow_surface, 
+                                   (draw_rect.centerx - current_radius, 
+                                    draw_rect.centery - current_radius),
+                                   special_flags=pygame.BLEND_ALPHA_SDL2)
+            
+            # Draw main balloon with rotation and scaling
+            if self.rotated_image and abs(self.hover_scale - 1.0) > 0.01:
+                # Both rotation and scaling
+                scaled_image = pygame.transform.scale(self.rotated_image, 
+                                                    (draw_rect.width, draw_rect.height))
+                scaled_rect = scaled_image.get_rect(center=self.rect.center)
+                screen.blit(scaled_image, scaled_rect)
+            elif self.rotated_image:
+                # Just rotation
+                rotated_rect = self.rotated_image.get_rect(center=self.rect.center)
+                screen.blit(self.rotated_image, rotated_rect)
+            elif abs(self.hover_scale - 1.0) > 0.01:
+                # Just scaling
+                scaled_image = pygame.transform.scale(current_image, 
+                                                    (draw_rect.width, draw_rect.height))
+                scaled_rect = scaled_image.get_rect(center=self.rect.center)
+                screen.blit(scaled_image, scaled_rect)
             else:
-                screen.blit(self.image, self.rect)
-        
-        # Draw points preview when hovered
-        if self.hover_scale > 1.05 and not self.popped:
-            points_text = f"+{self.points}"
-            font = pygame.font.Font(None, 24)
-            points_surface = font.render(points_text, True, WHITE)
-            points_rect = points_surface.get_rect(center=(self.rect.centerx, self.rect.top - 20))
+                # No transformation
+                screen.blit(current_image, self.rect)
             
-            # Draw background for points
-            bg_rect = points_rect.inflate(10, 4)
-            pygame.draw.rect(screen, (0, 0, 0, 150), bg_rect, border_radius=5)
+            # Subtle shine effect
+            if not self.is_hovering:  # Only when not hovered to avoid overlap
+                shine_progress = (time_elapsed + self.shine_offset) * 0.5
+                shine_alpha = int(30 * (0.5 + 0.5 * math.sin(shine_progress)))
+                if shine_alpha > 0:
+                    shine_size = self.rect.width // 4
+                    shine_x = self.rect.centerx - shine_size // 2
+                    shine_y = self.rect.centery - self.rect.height // 3
+                    pygame.draw.ellipse(screen, (255, 255, 255, shine_alpha), 
+                                      (shine_x, shine_y, shine_size, shine_size // 2))
+        
+        # Enhanced points preview when hovered
+        if self.is_hovering and not self.popped:
+            points_text = f"+{self.points}"
+            font = pygame.font.Font(None, 26)
+            
+            # Pulsing points text
+            pulse_scale = 1.0 + 0.1 * math.sin(self.pulse_animation)
+            points_surface = font.render(points_text, True, (255, 255, 100))
+            
+            if abs(pulse_scale - 1.0) > 0.01:
+                scaled_width = int(points_surface.get_width() * pulse_scale)
+                scaled_height = int(points_surface.get_height() * pulse_scale)
+                points_surface = pygame.transform.scale(points_surface, (scaled_width, scaled_height))
+            
+            points_rect = points_surface.get_rect(center=(self.rect.centerx, self.rect.top - 25))
+            
+            # Enhanced background with shadow
+            bg_rect = points_rect.inflate(12, 6)
+            shadow_rect = bg_rect.copy()
+            shadow_rect.move_ip(2, 2)
+            
+            pygame.draw.rect(screen, (0, 0, 0, 100), shadow_rect)
+            pygame.draw.rect(screen, (0, 0, 0, 200), bg_rect)
+            pygame.draw.rect(screen, (255, 255, 100), bg_rect, 1)
             screen.blit(points_surface, points_rect)
 
 
 class BalloonPopGame(BaseGame):
     def __init__(self, screen=None):
         super().__init__(screen)
-        pygame.display.set_caption("Balloon Pop - Hand Tracking")
+        pygame.display.set_caption("Balloon Pop - Enhanced Edition")
         
-        # Load balloon images
+        # Pre-load and pre-scale all balloon images
         self.balloon_images = {}
         self.balloon_colors = ['orange', 'gray', 'cyan', 'pink', 'blue', 'red']
         
-        # Create balloon images from colors (placeholder until we load actual images)
-        self.create_balloon_images()
+        # Create optimized balloon images
+        self.create_optimized_balloon_images()
         
         # Game state
         self.balloons = []
         self.score = 0
         self.balloons_popped = 0
         self.balloons_missed = 0
-        self.max_missed = 10
+        self.max_missed = 8  # Slightly more forgiving
         self.game_over = False
         self.level = 1
         self.spawn_timer = 0
-        self.spawn_interval = 2.0  # Seconds between spawns
+        self.spawn_interval = 2.2  # Slightly slower initial spawn
         self.last_spawn_time = time.time()
+        
+        # Enhanced spawn control
+        self.consecutive_spawns = 0
+        self.max_consecutive = 3
+        self.burst_cooldown = 0
         
         # Hand tracking
         self.last_pinch = False
-        self.hand_trail = []  # For visual trail effect
+        self.hand_trail = []
+        self.max_trail_length = 6
         
         # Game progression
-        self.balloons_for_next_level = 20
+        self.balloons_for_next_level = 15
         
-        # UI Elements - will be positioned dynamically
+        # UI Elements
         self.create_game_buttons()
         
-        # Particle system for effects
-        self.particles = []
+        # Enhanced effects system
+        self.pop_effects = []
+        self.max_pop_effects = 10
+        
+        # Performance optimization
+        self.cached_fonts = {
+            'small': pygame.font.Font(None, 24),
+            'medium': pygame.font.Font(None, 36),
+            'large': pygame.font.Font(None, 48),
+            'huge': pygame.font.Font(None, 64)
+        }
+        
+        # Safe spawn zone (avoiding edges for better hand tracking)
+        current_width, current_height = self.get_current_screen_size()
+        self.spawn_margin = min(120, current_width * 0.15)  # 15% margin or 120px minimum
         
         # Initialize first spawn
         self.last_spawn_time = time.time()
     
-    def create_game_buttons(self):
-        """Create game-specific buttons with dynamic positioning"""
-        current_width, current_height = self.get_current_screen_size()
-        
-        self.restart_button = AnimatedButton(
-            current_width - 580, 20, 120, 50, "🎈 New Game", PURPLE, GREEN
-        )
-    
-    def recalculate_game_layout(self):
-        """Recalculate game-specific layout when screen size changes"""
-        print("Recalculating Balloon Pop layout...")
-        self.create_game_buttons()
-        
-        # Update existing balloons with new screen dimensions
-        current_width, current_height = self.get_current_screen_size()
-        for balloon in self.balloons:
-            balloon.screen_width = current_width
-            balloon.screen_height = current_height
-        
-    def get_game_info(self):
-        return {
-            'name': 'Balloon Pop',
-            'description': 'Pop floating balloons with hand gestures',
-            'preview_color': (255, 100, 150)
-        }
-    
-    def create_balloon_images(self):
-        """Load actual balloon images"""
+    def create_optimized_balloon_images(self):
+        """Load and pre-scale balloon images for better performance"""
         balloon_files = {
             'orange': 'assets/balloons/balon_adidas_orange.png',
-            'gray': 'assets/balloons/balon_adidas_grey.png', 
+            'gray': 'assets/balloons/balon_adidas_grey.png',
             'cyan': 'assets/balloons/balon_adidas_biru_muda.png',
             'pink': 'assets/balloons/balon_adidas_pink.png',
             'blue': 'assets/balloons/balon_adidas_biru.png',
             'red': 'assets/balloons/balon_adidas_merah.png'
         }
 
-        # Try to load actual images first
+        # Enhanced scales with hover state
+        scales = {
+            'small': (65, 80),
+            'medium': (85, 105),
+            'large': (105, 130),
+            'hover': (95, 118)  # Between medium and large
+        }
+
         for color_name, file_path in balloon_files.items():
+            self.balloon_images[color_name] = {}
+            
             try:
-                image = pygame.image.load(file_path).convert_alpha()  # Add convert_alpha()
-                # Resize if needed
-                image = pygame.transform.scale(image, (80, 100))
-                self.balloon_images[color_name] = image
-            except:
-                print(f"Could not load {file_path}, using fallback")
-                # Fallback to drawing simple balloons
-                balloon_size = (80, 100)
-                surface = pygame.Surface(balloon_size, pygame.SRCALPHA)
+                original_image = pygame.image.load(file_path).convert_alpha()
                 
-                # Color mapping
-                color_map = {
-                    'orange': (255, 165, 0),
-                    'gray': (128, 128, 128),
-                    'cyan': (0, 255, 255),
-                    'pink': (255, 192, 203),
-                    'blue': (0, 100, 255),
-                    'red': (255, 50, 50)
-                }
+                for scale_name, (width, height) in scales.items():
+                    scaled_image = pygame.transform.smoothscale(original_image, (width, height))
+                    self.balloon_images[color_name][scale_name] = scaled_image
+                    
+                print(f"Enhanced {color_name} balloon loaded with {len(scales)} scales")
                 
-                color = color_map.get(color_name, (255, 255, 255))
-                
-                # Draw balloon shape
-                balloon_rect = pygame.Rect(10, 5, 60, 75)
-                pygame.draw.ellipse(surface, color, balloon_rect)
-                
-                # Add highlight
-                highlight_rect = pygame.Rect(20, 15, 15, 20)
-                highlight_color = tuple(min(255, c + 50) for c in color)
-                pygame.draw.ellipse(surface, highlight_color, highlight_rect) 
-                
-                # Draw string
-                string_start = (balloon_rect.centerx, balloon_rect.bottom)
-                string_end = (balloon_rect.centerx + 2, balloon_size[1] - 5)
-                pygame.draw.line(surface, (139, 69, 19), string_start, string_end, 2)
-                
-                self.balloon_images[color_name] = surface
+            except Exception as e:
+                print(f"Could not load {file_path}: {e}, using enhanced fallback")
+                self.create_enhanced_fallback_balloon_images(color_name, scales)
     
-    def spawn_balloon(self):
-        """Spawn a new balloon"""
+    def create_enhanced_fallback_balloon_images(self, color_name, scales):
+        """Create enhanced fallback balloon images"""
+        color_map = {
+            'orange': (255, 165, 0),
+            'gray': (128, 128, 128),
+            'cyan': (0, 255, 255),
+            'pink': (255, 192, 203),
+            'blue': (0, 100, 255),
+            'red': (255, 50, 50)
+        }
+        
+        color = color_map.get(color_name, (255, 255, 255))
+        self.balloon_images[color_name] = {}
+        
+        for scale_name, (width, height) in scales.items():
+            surface = pygame.Surface((width, height), pygame.SRCALPHA)
+            
+            # Enhanced balloon shape with gradient effect
+            balloon_rect = pygame.Rect(width//8, height//20, width*3//4, height*3//4)
+            
+            # Main balloon body
+            pygame.draw.ellipse(surface, color, balloon_rect)
+            
+            # Multiple highlights for depth
+            highlight1 = pygame.Rect(width//4, height//8, width//5, height//4)
+            highlight_color1 = tuple(min(255, c + 80) for c in color)
+            pygame.draw.ellipse(surface, highlight_color1, highlight1)
+            
+            highlight2 = pygame.Rect(width//3, height//6, width//8, height//6)
+            highlight_color2 = tuple(min(255, c + 120) for c in color)
+            pygame.draw.ellipse(surface, highlight_color2, highlight2)
+            
+            # Enhanced string with knot
+            string_start = (balloon_rect.centerx, balloon_rect.bottom)
+            string_end = (balloon_rect.centerx + 2, height - 5)
+            pygame.draw.line(surface, (139, 69, 19), string_start, string_end, 3)
+            
+            # String knot
+            knot_rect = pygame.Rect(balloon_rect.centerx - 2, balloon_rect.bottom - 3, 4, 6)
+            pygame.draw.ellipse(surface, (100, 50, 0), knot_rect)
+            
+            self.balloon_images[color_name][scale_name] = surface
+    
+    def create_game_buttons(self):
+        """Create enhanced game buttons"""
         current_width, current_height = self.get_current_screen_size()
         
-        # Random position along bottom of screen using dynamic width
-        x = random.randint(50, current_width - 50)
-        y = current_height + 50  # Start below screen
+        # Main restart button (always visible, top right) - moved further right
+        self.restart_button = AnimatedButton(
+            current_width - 280, 20, 130, 50, "New Game", PURPLE, GREEN
+        )
         
-        # Random balloon color
+        # Game over overlay button (center screen)
+        self.game_over_restart_button = AnimatedButton(
+            current_width//2 - 100, current_height//2 + 60, 200, 60, 
+            "Play Again", (50, 50, 50), (100, 255, 100)
+        )
+    
+    def recalculate_game_layout(self):
+        """Recalculate enhanced game layout when screen size changes"""
+        print("Recalculating Enhanced Balloon Pop layout...")
+        self.create_game_buttons()
+        
+        current_width, current_height = self.get_current_screen_size()
+        
+        # Update spawn margin for new screen size
+        self.spawn_margin = min(120, current_width * 0.15)
+        
+        # Update existing balloons' screen dimensions
+        for balloon in self.balloons:
+            balloon.screen_width = current_width
+            balloon.screen_height = current_height
+    
+    def get_game_info(self):
+        return {
+            'name': 'Balloon Pop ',
+            'description': 'Pop floating balloons with enhanced effects and smart spawn zones',
+            'preview_color': (255, 120, 180)
+        }
+    
+    def get_safe_spawn_x(self):
+        """Get a safe X coordinate for spawning that works well with hand tracking"""
+        current_width, current_height = self.get_current_screen_size()
+        
+        # Define safe zone (avoiding edges)
+        safe_left = self.spawn_margin
+        safe_right = current_width - self.spawn_margin
+        safe_width = safe_right - safe_left
+        
+        if safe_width > 100:  # Ensure we have enough space
+            return random.randint(int(safe_left), int(safe_right))
+        else:
+            # Fallback if screen is too narrow
+            return random.randint(80, max(120, current_width - 80))
+    
+    def spawn_balloon(self):
+        """Spawn a new balloon in safe zone - """
+        current_width, current_height = self.get_current_screen_size()
+        
+        # Use safe spawn zone
+        x = self.get_safe_spawn_x()
+        y = current_height + random.randint(30, 80)  # Varied spawn height
+        
         color_name = random.choice(self.balloon_colors)
-        balloon_image = self.balloon_images[color_name]
         
-        balloon = Balloon(x, y, balloon_image, color_name, current_width, current_height)
+        balloon = Balloon(x, y, self.balloon_images, color_name, current_width, current_height)
         self.balloons.append(balloon)
+        
+        print(f"Spawned {color_name} balloon at safe position: {x}")
+    
+    def spawn_balloon_burst(self):
+        """Spawn multiple balloons in a controlled burst"""
+        burst_size = random.randint(2, 4)
+        current_width, current_height = self.get_current_screen_size()
+        
+        # Spread balloons across safe zone
+        safe_left = self.spawn_margin
+        safe_right = current_width - self.spawn_margin
+        
+        for i in range(burst_size):
+            # Distribute evenly across safe zone
+            x_ratio = (i + 0.5) / burst_size
+            x = int(safe_left + (safe_right - safe_left) * x_ratio)
+            x += random.randint(-30, 30)  # Add some randomness
+            
+            # Clamp to safe bounds
+            x = max(safe_left, min(safe_right, x))
+            
+            y = current_height + random.randint(20, 100)
+            color_name = random.choice(self.balloon_colors)
+            
+            balloon = Balloon(x, y, self.balloon_images, color_name, current_width, current_height)
+            self.balloons.append(balloon)
+        
+        print(f"Spawned burst of {burst_size} balloons in safe zone")
     
     def handle_game_events(self, event):
-        """Handle balloon pop game events"""
+        """Handle enhanced balloon pop game events"""
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_r:
                 self.restart_game()
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            # Check restart button
             if self.restart_button.is_clicked(event.pos, True):
                 self.restart_game()
-            else:
-                # Check balloon clicks (for debugging)
-                for balloon in self.balloons:
+            elif self.game_over and self.game_over_restart_button.is_clicked(event.pos, True):
+                self.restart_game()
+            elif not self.game_over:  # Only allow balloon clicking when game is active
+                # Check balloon clicks with improved collision
+                for balloon in self.balloons[:]:  # Use slice to avoid modification during iteration
                     if balloon.check_collision(event.pos[0], event.pos[1]):
                         if balloon.pop():
                             self.score += balloon.points
                             self.balloons_popped += 1
-                            print(f"Balloon popped! +{balloon.points} points")
+                            self.create_enhanced_pop_effect(balloon)
                         break
     
+    def create_enhanced_pop_effect(self, balloon):
+        """Create enhanced celebration effects"""
+        if len(self.pop_effects) < self.max_pop_effects:
+            pop_effect = PopEffect(
+                balloon.rect.centerx, 
+                balloon.rect.centery,
+                balloon.color_name,
+                balloon.scale_type
+            )
+            self.pop_effects.append(pop_effect)
+    
     def restart_game(self):
-        """Restart the game"""
+        """Restart the enhanced game"""
         self.balloons = []
         self.score = 0
         self.balloons_popped = 0
         self.balloons_missed = 0
         self.game_over = False
         self.level = 1
-        self.spawn_interval = 2.0
+        self.spawn_interval = 2.2
         self.last_spawn_time = time.time()
-        self.particles = []
-        print("Game restarted!")
+        self.pop_effects = []
+        self.hand_trail = []
+        self.consecutive_spawns = 0
+        self.burst_cooldown = 0
+        print(" game restarted!")
     
     def update_game(self):
-        """Update balloon pop game state"""
+        """Update enhanced balloon pop game state"""
+        # Always update UI buttons even during game over
+        hand_data = self.hand_tracker.hand_data
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # Use mouse if hand tracking is not active
+        if not hand_data.active or hand_data.hands_count == 0:
+            hand_data.x, hand_data.y = mouse_pos
+            
+        hand_pos = (hand_data.x, hand_data.y) if (hand_data.active and hand_data.hands_count > 0) else None
+        self.restart_button.update(mouse_pos, hand_pos, hand_data.pinching)
+        
+        # Update game over button if game is over
+        if self.game_over:
+            self.game_over_restart_button.update(mouse_pos, hand_pos, hand_data.pinching)
+        
+        if self.restart_button.is_hand_activated() or (self.game_over and self.game_over_restart_button.is_hand_activated()):
+            self.restart_game()
+        
         if self.game_over:
             return
             
         current_time = time.time()
-        dt = 1/60
+        dt = 1/60  # Fixed timestep for consistency
         
-        # Spawn new balloons
+        #  spawn logic with burst control
         if current_time - self.last_spawn_time > self.spawn_interval:
-            self.spawn_balloon()
-            self.last_spawn_time = current_time
-            
-            # Occasionally spawn multiple balloons
-            if random.random() < 0.3:  # 30% chance
-                if random.random() < 0.5:  # 50% of that for second balloon
+            if self.burst_cooldown <= 0:
+                # Decide between single spawn or burst
+                if (self.consecutive_spawns < self.max_consecutive and 
+                    random.random() < 0.25 and len(self.balloons) < 8):  # Burst chance
+                    self.spawn_balloon_burst()
+                    self.consecutive_spawns += 1
+                    self.burst_cooldown = 3.0  # Cooldown after burst
+                else:
                     self.spawn_balloon()
+                    self.consecutive_spawns = 0
+            else:
+                self.spawn_balloon()
+                self.burst_cooldown -= (current_time - self.last_spawn_time)
+            
+            self.last_spawn_time = current_time
         
-        # Update balloons
+        # Update balloons with enhanced logic
         remaining_balloons = []
         for balloon in self.balloons:
             if balloon.update(dt, self.background_manager.time_elapsed):
                 remaining_balloons.append(balloon)
             else:
-                # Balloon went off screen
                 if not balloon.popped:
                     self.balloons_missed += 1
                     if self.balloons_missed >= self.max_missed:
                         self.game_over = True
-                        print("Game Over! Too many balloons missed.")
         
         self.balloons = remaining_balloons
         
-        # Hand tracking
+        # Update enhanced pop effects
+        remaining_effects = []
+        for effect in self.pop_effects:
+            if effect.update(dt):
+                remaining_effects.append(effect)
+        self.pop_effects = remaining_effects
+        
+        # Enhanced hand tracking with mouse fallback
         hand_data = self.hand_tracker.hand_data
         mouse_pos = pygame.mouse.get_pos()
         
-        # Use mouse if no hand tracking
+        # Use mouse if hand tracking is not active
         if not hand_data.active or hand_data.hands_count == 0:
             hand_data.x, hand_data.y = mouse_pos
         
-        # Update hand trail
+        # Enhanced hand trail with smoothing
         if hand_data.active and hand_data.hands_count > 0:
-            self.hand_trail.append((hand_data.x, hand_data.y, current_time))
-            # Keep trail short
-            self.hand_trail = [(x, y, t) for x, y, t in self.hand_trail if current_time - t < 0.5]
+            # Smooth trail updates - only add if moved significantly
+            if (not self.hand_trail or 
+                abs(hand_data.x - self.hand_trail[-1][0]) > 5 or 
+                abs(hand_data.y - self.hand_trail[-1][1]) > 5):
+                self.hand_trail.append((hand_data.x, hand_data.y, current_time))
+            
+            # Trim trail
+            if len(self.hand_trail) > self.max_trail_length:
+                self.hand_trail.pop(0)
         
-        # Check balloon hover states
-        hovered_balloon = None
+        # Enhanced balloon interaction - find closest balloon for hover
+        closest_balloon = None
+        min_distance = float('inf')
+        hover_threshold = 50
+        
         for balloon in self.balloons:
-            hovering = balloon.check_collision(hand_data.x, hand_data.y, 40)
-            balloon.set_hover(hovering)
-            if hovering:
-                hovered_balloon = balloon
+            if balloon.popped:
+                continue
+                
+            distance = math.sqrt((hand_data.x - balloon.rect.centerx) ** 2 + 
+                               (hand_data.y - balloon.rect.centery) ** 2)
+            
+            if distance < hover_threshold and distance < min_distance:
+                min_distance = distance
+                closest_balloon = balloon
         
-        # Handle pinch gesture
-        if hand_data.pinching and not self.last_pinch and hovered_balloon:
-            if hovered_balloon.pop():
-                self.score += hovered_balloon.points
+        # Set hover states efficiently
+        for balloon in self.balloons:
+            balloon.set_hover(balloon == closest_balloon)
+        
+        # Enhanced pinch gesture handling
+        if hand_data.pinching and not self.last_pinch and closest_balloon:
+            if closest_balloon.pop():
+                self.score += closest_balloon.points
                 self.balloons_popped += 1
+                self.create_enhanced_pop_effect(closest_balloon)
                 
-                # Create celebration particles
-                for _ in range(8):
-                    self.particles.append({
-                        'x': hovered_balloon.rect.centerx,
-                        'y': hovered_balloon.rect.centery,
-                        'vx': random.uniform(-100, 100),
-                        'vy': random.uniform(-150, -50),
-                        'life': 1.0,
-                        'color': (255, 255, 0)
-                    })
-                
-                print(f"Pinch pop! +{hovered_balloon.points} points. Score: {self.score}")
+                # Bonus points for fast popping
+                if len(self.balloons) > 5:
+                    self.score += 10
         
         self.last_pinch = hand_data.pinching
         
-        # Update particles
-        remaining_particles = []
-        for particle in self.particles:
-            particle['x'] += particle['vx'] * dt
-            particle['y'] += particle['vy'] * dt
-            particle['vy'] += 300 * dt  # Gravity
-            particle['life'] -= dt * 2
-            
-            if particle['life'] > 0:
-                remaining_particles.append(particle)
-        
-        self.particles = remaining_particles
-        
-        # Level progression
+        # Enhanced level progression
         if self.balloons_popped >= self.balloons_for_next_level:
             self.level += 1
-            self.balloons_for_next_level += 15
-            self.spawn_interval = max(0.5, self.spawn_interval - 0.1)  # Faster spawning
-            print(f"Level up! Now level {self.level}")
+            self.balloons_for_next_level += 12  # Slightly easier progression
+            self.spawn_interval = max(0.8, self.spawn_interval - 0.15)  # Gradual speed increase
+            
+            # Level-up bonus
+            level_bonus = self.level * 100
+            self.score += level_bonus
+            print(f"Level {self.level}! Bonus: {level_bonus}")
         
-        # Update UI
-        hand_pos = (hand_data.x, hand_data.y) if (hand_data.active and hand_data.hands_count > 0) else None
-        self.restart_button.update(mouse_pos, hand_pos, hand_data.pinching)
+        # Update UI with enhanced interaction (moved from bottom)
+        # This was moved up to ensure buttons work during game over
         
-        if self.restart_button.is_hand_activated():
-            self.restart_game()
+        if self.game_over:
+            # Still update pop effects during game over for visual continuity
+            dt = 1/60
+            remaining_effects = []
+            for effect in self.pop_effects:
+                if effect.update(dt):
+                    remaining_effects.append(effect)
+            self.pop_effects = remaining_effects
+            return
     
     def draw_game(self):
-        """Draw balloon pop game"""
+        """Draw enhanced balloon pop game"""
         current_width, current_height = self.get_current_screen_size()
         
-        # Draw title
+        # Enhanced title with glow effect
         title_text = self.font_title.render("BALLOON POP", True, WHITE)
-        title_x = 250
-        title_y = 40
-        self.screen.blit(title_text, (title_x, title_y))
+        title_rect = title_text.get_rect(center=(current_width//2, 60))
         
-        # Draw subtitle
-        subtitle = "Pop floating balloons with pinch gestures"
-        subtitle_text = self.font_small.render(subtitle, True, (255, 100, 150))
-        self.screen.blit(subtitle_text, (title_x, title_y + 50))
+        # Add title glow
+        glow_surface = self.font_title.render("BALLOON POP", True, (100, 200, 255))
+        for offset in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
+            glow_rect = title_rect.copy()
+            glow_rect.move_ip(offset)
+            self.screen.blit(glow_surface, glow_rect)
+        
+        self.screen.blit(title_text, title_rect)
+        
+        # Enhanced subtitle
+        # subtitle_text = self.font_small.render("Enhanced effects • Smart spawn zones • Optimized performance", True, (255, 150, 200))
+        # subtitle_rect = subtitle_text.get_rect(center=(current_width//2, 95))
+        # self.screen.blit(subtitle_text, subtitle_rect)
         
         # Draw balloons
         for balloon in self.balloons:
             balloon.draw(self.screen, self.background_manager.time_elapsed)
         
-        # Draw particles
-        for particle in self.particles:
-            alpha = int(255 * particle['life'])
-            size = max(1, int(5 * particle['life']))
-            color = (*particle['color'], alpha)
-            
-            # Create surface for alpha blending
-            particle_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
-            pygame.draw.circle(particle_surface, color, (size, size), size)
-            self.screen.blit(particle_surface, (particle['x'] - size, particle['y'] - size))
+        # Draw enhanced pop effects
+        for effect in self.pop_effects:
+            effect.draw(self.screen)
         
-        # Draw hand trail
+        # Enhanced hand trail with gradient
         if len(self.hand_trail) > 1:
-            for i in range(1, len(self.hand_trail)):
-                start_pos = self.hand_trail[i-1][:2]
-                end_pos = self.hand_trail[i][:2]
-                alpha = int(255 * (i / len(self.hand_trail)))
-                
-                # Create surface for alpha line - Fixed: use dynamic screen size
-                if alpha > 0:
-                    trail_surface = pygame.Surface((current_width, current_height), pygame.SRCALPHA)
-                    pygame.draw.line(trail_surface, (0, 255, 255, alpha), start_pos, end_pos, max(1, 5 - i))
-                    self.screen.blit(trail_surface, (0, 0))
+            current_time = time.time()
+            trail_points = []
+            trail_colors = []
+            
+            for i, (x, y, timestamp) in enumerate(self.hand_trail[-6:]):
+                age = current_time - timestamp
+                if age < 0.5:  # Only show recent trail
+                    alpha = max(50, int(255 * (1 - age / 0.5)))
+                    trail_points.append((int(x), int(y)))
+                    trail_colors.append((0, 255, 255, alpha))
+            
+            # Draw trail with varying thickness
+            if len(trail_points) > 1:
+                for i in range(len(trail_points) - 1):
+                    thickness = max(1, 4 - i)
+                    if i < len(trail_colors):
+                        color = trail_colors[i][:3]  # Remove alpha for pygame.draw.line
+                        pygame.draw.line(self.screen, color, trail_points[i], trail_points[i + 1], thickness)
         
-        # Draw hand indicator
+        # Enhanced hand indicator
         hand_data = self.hand_tracker.hand_data
         if hand_data.active and hand_data.hands_count > 0:
-            pulse = math.sin(self.background_manager.time_elapsed * 8) * 2 + 8
+            # Animated hand cursor
+            pulse = math.sin(self.background_manager.time_elapsed * 4) * 0.2 + 1.0
             hand_color = GREEN if not hand_data.pinching else YELLOW
+            radius = int(15 * pulse) if not hand_data.pinching else int(10 * pulse)
             
-            # Draw pinch indicator
-            if hand_data.pinching:
-                pygame.draw.circle(self.screen, YELLOW, (hand_data.x, hand_data.y), int(pulse + 5), 3)
+            # Draw hand indicator with pulse effect
+            pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), radius)
+            pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), radius, 3)
             
-            pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), int(pulse))
-            pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), int(pulse), 2)
+            # Draw crosshair for precision
+            cross_size = 8
+            pygame.draw.line(self.screen, hand_color, 
+                           (hand_data.x - cross_size, hand_data.y), 
+                           (hand_data.x + cross_size, hand_data.y), 2)
+            pygame.draw.line(self.screen, hand_color, 
+                           (hand_data.x, hand_data.y - cross_size), 
+                           (hand_data.x, hand_data.y + cross_size), 2)
         
-        # Draw game stats
+        # Enhanced game stats with better layout
         stats_x = 50
-        stats_y = 150
+        stats_y = 140
         
-        # Score
-        score_text = self.font_medium.render(f"Score: {self.score}", True, WHITE)
+        # Score with animation
+        score_color = WHITE
+        if hasattr(self, '_last_score') and self.score > self._last_score:
+            score_color = YELLOW
+        self._last_score = getattr(self, '_last_score', self.score)
+        if abs(self.score - self._last_score) > 0:
+            self._last_score += (self.score - self._last_score) * 0.1
+        
+        score_text = self.cached_fonts['large'].render(f"Score: {int(self._last_score)}", True, score_color)
         self.screen.blit(score_text, (stats_x, stats_y))
         
-        # Level
-        level_text = self.font_medium.render(f"Level: {self.level}", True, CYAN)
-        self.screen.blit(level_text, (stats_x, stats_y + 35))
+        level_text = self.cached_fonts['medium'].render(f"Level: {self.level}", True, CYAN)
+        self.screen.blit(level_text, (stats_x, stats_y + 50))
         
-        # Balloons popped
-        popped_text = self.font_medium.render(f"Popped: {self.balloons_popped}", True, GREEN)
-        self.screen.blit(popped_text, (stats_x, stats_y + 70))
+        popped_text = self.cached_fonts['medium'].render(f"Popped: {self.balloons_popped}", True, GREEN)
+        self.screen.blit(popped_text, (stats_x, stats_y + 80))
         
-        # Balloons missed
-        missed_color = RED if self.balloons_missed > self.max_missed // 2 else WHITE
-        missed_text = self.font_medium.render(f"Missed: {self.balloons_missed}/{self.max_missed}", True, missed_color)
-        self.screen.blit(missed_text, (stats_x, stats_y + 105))
+        # Enhanced missed counter with warning colors
+        missed_ratio = self.balloons_missed / self.max_missed
+        if missed_ratio >= 0.8:
+            missed_color = RED
+        elif missed_ratio >= 0.6:
+            missed_color = YELLOW
+        else:
+            missed_color = WHITE
+            
+        missed_text = self.cached_fonts['medium'].render(f"Missed: {self.balloons_missed}/{self.max_missed}", True, missed_color)
+        self.screen.blit(missed_text, (stats_x, stats_y + 110))
         
         # Progress to next level
-        progress = self.balloons_popped % (self.balloons_for_next_level - (self.level - 1) * 15)
-        needed = self.balloons_for_next_level - (self.level - 1) * 15 - progress
-        progress_text = self.font_small.render(f"Next level: {needed} more", True, LIGHT_GRAY)
+        progress_text = self.cached_fonts['small'].render(f"Next Level: {self.balloons_popped}/{self.balloons_for_next_level}", True, LIGHT_GRAY)
         self.screen.blit(progress_text, (stats_x, stats_y + 140))
         
-        # Game status - Fixed: use dynamic screen size
+        # Enhanced spawn zone indicator (debug info)
+        if hasattr(self, '_show_debug') and self._show_debug:
+            safe_left = self.spawn_margin
+            safe_right = current_width - self.spawn_margin
+            pygame.draw.line(self.screen, (255, 255, 0, 100), (safe_left, 0), (safe_left, current_height), 2)
+            pygame.draw.line(self.screen, (255, 255, 0, 100), (safe_right, 0), (safe_right, current_height), 2)
+            
+            debug_text = self.cached_fonts['small'].render(f"Safe spawn zone: {safe_left} - {safe_right}", True, YELLOW)
+            self.screen.blit(debug_text, (stats_x, stats_y + 170))
+        
+        # Game status with enhanced feedback
         center_x = current_width // 2
-        status_y = current_height - 120
+        status_y = current_height - 140
         
         if self.game_over:
-            game_over_text = self.font_large.render("GAME OVER", True, RED)
-            game_over_rect = game_over_text.get_rect(center=(center_x, status_y - 40))
+            # Enhanced game over overlay
+            overlay = pygame.Surface((current_width, current_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 150))  # Semi-transparent black
+            self.screen.blit(overlay, (0, 0))
+            
+            # Game over panel
+            panel_width = 400
+            panel_height = 300
+            panel_x = center_x - panel_width // 2
+            panel_y = current_height // 2 - panel_height // 2
+            
+            # Panel background with border
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+            pygame.draw.rect(self.screen, (20, 20, 30), panel_rect)
+            pygame.draw.rect(self.screen, (100, 100, 150), panel_rect, 3)
+            
+            # Game over title
+            game_over_text = self.cached_fonts['huge'].render("GAME OVER", True, RED)
+            game_over_rect = game_over_text.get_rect(center=(center_x, panel_y + 60))
+            
+            # Add text shadow
+            shadow_text = self.cached_fonts['huge'].render("GAME OVER", True, (80, 0, 0))
+            shadow_rect = game_over_rect.copy()
+            shadow_rect.move_ip(2, 2)
+            self.screen.blit(shadow_text, shadow_rect)
             self.screen.blit(game_over_text, game_over_rect)
             
-            final_score_text = self.font_medium.render(f"Final Score: {self.score}", True, WHITE)
-            final_score_rect = final_score_text.get_rect(center=(center_x, status_y))
+            # Stats
+            final_score_text = self.cached_fonts['large'].render(f"Final Score: {self.score}", True, WHITE)
+            final_score_rect = final_score_text.get_rect(center=(center_x, panel_y + 120))
             self.screen.blit(final_score_text, final_score_rect)
-        else:
-            if hand_data.active and hand_data.hands_count > 0:
-                status = f"Hand Tracking Active - {len(self.balloons)} balloons"
-                status_color = GREEN
-            else:
-                status = "Using mouse (no hand tracking detected)"
-                status_color = LIGHT_GRAY
             
-            status_text = self.font_medium.render(status, True, status_color)
+            level_reached_text = self.cached_fonts['medium'].render(f"Level Reached: {self.level}", True, CYAN)
+            level_reached_rect = level_reached_text.get_rect(center=(center_x, panel_y + 155))
+            self.screen.blit(level_reached_text, level_reached_rect)
+            
+            balloons_stats_text = self.cached_fonts['medium'].render(f"Balloons Popped: {self.balloons_popped}", True, GREEN)
+            balloons_stats_rect = balloons_stats_text.get_rect(center=(center_x, panel_y + 185))
+            self.screen.blit(balloons_stats_text, balloons_stats_rect)
+            
+            # Draw game over restart button
+            self.game_over_restart_button.draw(self.screen, self.cached_fonts['medium'])
+            
+        else:
+            # Enhanced status display
+            balloon_count = len(self.balloons)
+            balloon_color = RED if balloon_count > 15 else YELLOW if balloon_count > 10 else GREEN
+            
+            tracking_status = "Hand Active" if hand_data.active and hand_data.hands_count > 0 else "Mouse Mode"
+            tracking_color = GREEN if hand_data.active and hand_data.hands_count > 0 else LIGHT_GRAY
+            
+            status = f"Balloons: {balloon_count} | Speed: {self.spawn_interval:.1f}s | {tracking_status}"
+            status_text = self.cached_fonts['medium'].render(status, True, tracking_color)
             status_rect = status_text.get_rect(center=(center_x, status_y))
             self.screen.blit(status_text, status_rect)
+            
+            # Performance indicator
+            fps_text = f"FPS: ~60 | Effects: {len(self.pop_effects)}"
+            fps_color = GREEN if len(self.pop_effects) < 8 else YELLOW
+            fps_surface = self.cached_fonts['small'].render(fps_text, True, fps_color)
+            fps_rect = fps_surface.get_rect(center=(center_x, status_y + 25))
+            self.screen.blit(fps_surface, fps_rect)
         
-        # Draw restart button
-        self.restart_button.draw(self.screen, self.font_small)
+        # Draw restart button (always visible)
+        self.restart_button.draw(self.screen, self.cached_fonts['small'])
         
-        # Instructions - Fixed: use dynamic screen size
+        # Enhanced instructions
         instructions = [
-            "Use PINCH gesture to pop balloons",
-            "Don't let too many escape!",
-            "Mouse click also works | R: Restart | ESC: Menu"
+            "PINCH to pop balloons | Smart spawn zones for better tracking",
+            "Mouse click works too | R: Restart | ESC: Menu | Enhanced effects!"
         ]
-        instruction_y = current_height - 80
+        instruction_y = current_height - 50
         for i, instruction in enumerate(instructions):
-            text = self.font_small.render(instruction, True, LIGHT_GRAY)
-            text_rect = text.get_rect(center=(center_x, instruction_y + i * 20))
+            text = self.cached_fonts['small'].render(instruction, True, LIGHT_GRAY)
+            text_rect = text.get_rect(center=(center_x, instruction_y + i * 18))
             self.screen.blit(text, text_rect)

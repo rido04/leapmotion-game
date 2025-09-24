@@ -5,7 +5,7 @@ Core game components and utilities
 
 from .constants import *
 from .hand_tracker import HandTracker, HandData, TrackingListener
-from .ui_components import AnimatedButton, ParticleSystem, BackgroundManager, LogoManager
+from .ui_components import AnimatedButton, ParticleSystem, VideoBackgroundManager, BackgroundManager, LogoManager
 
 __all__ = [
     # Constants
@@ -17,5 +17,5 @@ __all__ = [
     
     # Classes
     'HandTracker', 'HandData', 'TrackingListener',
-    'AnimatedButton', 'ParticleSystem', 'BackgroundManager', 'LogoManager'
+    'AnimatedButton', 'ParticleSystem', 'BackgroundManager', 'VideoBackgroundManager', 'LogoManager'
 ]

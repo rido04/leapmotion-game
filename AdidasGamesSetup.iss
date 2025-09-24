@@ -39,29 +39,15 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 Name: "autostart"; Description: "Start automatically with Windows (Kiosk Mode)"; GroupDescription: "Retail Options"; Flags: unchecked
 
 [Files]
-; Main executable (dari PyInstaller --onefile)
-Source: "C:\laragon\www\game\main.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "main.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "assets\*"; DestDir: "{app}\assets"; Flags: recursesubdirs createallsubdirs
+Source: "games\*"; DestDir: "{app}\games"; Flags: recursesubdirs createallsubdirs
+Source: "core\*"; DestDir: "{app}\core"; Flags: recursesubdirs createallsubdirs
+Source: "3-foil.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "3-stripes.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "bata-putih.jpg"; DestDir: "{app}"; Flags: ignoreversion
+Source: "3-foil.ico"; DestDir: "{app}"; Flags: ignoreversion
 
-; Assets folder
-Source: "C:\laragon\www\game\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-; Games folder  
-Source: "C:\laragon\www\game\games\*"; DestDir: "{app}\games"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-; Core folder
-Source: "C:\laragon\www\game\core\*"; DestDir: "{app}\core"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-; Documentation
-Source: "C:\laragon\www\game\README.md"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckFileExists('C:\laragon\www\game\README.md')
-Source: "C:\laragon\www\game\requirements.txt"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckFileExists('C:\laragon\www\game\requirements.txt')
-
-; Game images/icons
-Source: "C:\laragon\www\game\3-foil.png"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckFileExists('C:\laragon\www\game\3-foil.png')
-Source: "C:\laragon\www\game\3-stripes.png"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckFileExists('C:\laragon\www\game\3-stripes.png')
-Source: "C:\laragon\www\game\bata-putih.jpg"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckFileExists('C:\laragon\www\game\bata-putih.jpg')
-
-; App icon untuk installer
-Source: "C:\laragon\www\game\3-foil.ico"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckFileExists('C:\laragon\www\game\3-foil.ico')
 
 [Icons]
 ; Desktop shortcut

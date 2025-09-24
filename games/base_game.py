@@ -30,7 +30,7 @@ class BaseGame(ABC):
         
         # Core systems
         self.hand_tracker = HandTracker()
-        self.background_manager = BackgroundManager()
+        self.background_manager = VideoBackgroundManager()
         self.particle_system = ParticleSystem()
         self.logo_manager = LogoManager()
         
