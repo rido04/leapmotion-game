@@ -1,11 +1,12 @@
 # games/tic_tac_toe.py
 """
 Optimized Tic Tac Toe game - Dark theme with smooth performance
-FIXED: Hand indicator now shows on top of win overlay
+UPDATED: Using PNG images for X and O symbols
 """
 
 import pygame
 import math
+import os
 from .base_game import BaseGame
 from core import *
 
@@ -26,6 +27,9 @@ class TicTacToeGame(BaseGame):
         self.last_pinch = False
         self.animation_time = 0
         
+        # Load and scale images
+        self.load_symbol_images()
+        
         # Optimized color scheme for dark background
         self.colors = {
             'bg_overlay': (25, 30, 40, 100),      # Transparent overlay
@@ -45,6 +49,63 @@ class TicTacToeGame(BaseGame):
         self.calculate_grid_layout()
         self.create_game_buttons()
     
+    def load_symbol_images(self):
+        """Load and scale PNG images for X and O symbols"""
+        try:
+            # Path to assets
+            assets_path = os.path.join("assets", "tic-tac-toe")
+            
+            # Load original images
+            x_image_path = os.path.join(assets_path, "3-stripes-w.png")  # X symbol (405x283)
+            o_image_path = os.path.join(assets_path, "3-foil-w.png")     # O symbol (500x500)
+            
+            # Load images
+            self.x_image_original = pygame.image.load(x_image_path)
+            self.o_image_original = pygame.image.load(o_image_path)
+            
+            # We'll scale them later based on cell size
+            self.x_image_scaled = None
+            self.o_image_scaled = None
+            
+        except pygame.error as e:
+            print(f"Error loading symbol images: {e}")
+            print("Falling back to drawn symbols")
+            # Set images to None to use drawn symbols as fallback
+            self.x_image_original = None
+            self.o_image_original = None
+            self.x_image_scaled = None
+            self.o_image_scaled = None
+    
+    def scale_symbol_images(self):
+        """Scale images based on current cell size"""
+        if self.x_image_original is None or self.o_image_original is None:
+            return
+            
+        try:
+            # Calculate target size (80% of cell size for good fit)
+            target_size = int(self.cell_size * 0.8)
+            
+            # Scale X image (3-stripes-w.png - 405x283)
+            # Keep aspect ratio of original (405:283 ≈ 1.43:1)
+            x_width = target_size
+            x_height = int(target_size * 283 / 405)  # Maintain aspect ratio
+            self.x_image_scaled = pygame.transform.smoothscale(
+                self.x_image_original, (x_width, x_height)
+            )
+            
+            # Scale O image (3-foil-w.png - 500x500)
+            # This is square, so we can use target_size for both dimensions
+            o_size = target_size
+            self.o_image_scaled = pygame.transform.smoothscale(
+                self.o_image_original, (o_size, o_size)
+            )
+            
+        except Exception as e:
+            print(f"Error scaling images: {e}")
+            # Fallback to None if scaling fails
+            self.x_image_scaled = None
+            self.o_image_scaled = None
+    
     def calculate_grid_layout(self):
         """Calculate grid layout - larger size"""
         current_width, current_height = self.get_current_screen_size()
@@ -54,6 +115,9 @@ class TicTacToeGame(BaseGame):
         self.cell_size = int(self.grid_size // 3)
         self.grid_offset_x = int((current_width - self.grid_size) // 2)
         self.grid_offset_y = int(max(140, (current_height - self.grid_size) // 2 - 40))
+        
+        # Scale images whenever grid layout changes
+        self.scale_symbol_images()
     
     def create_game_buttons(self):
         """Create game buttons"""
@@ -236,7 +300,7 @@ class TicTacToeGame(BaseGame):
         pygame.draw.rect(self.screen, self.colors['grid_border'], border_rect, 3)
     
     def draw_symbols(self):
-        """Draw X's and O's - optimized"""
+        """Draw X's and O's using PNG images or fallback to drawn symbols"""
         for row in range(3):
             for col in range(3):
                 if self.board[row][col] != '':
@@ -244,43 +308,79 @@ class TicTacToeGame(BaseGame):
                     center_y = int(self.grid_offset_y + row * self.cell_size + self.cell_size // 2)
                     
                     if self.board[row][col] == 'X':
-                        # Draw X - simple and fast
-                        size = int(min(self.cell_size // 3, 45))
-                        thickness = 6
-                        
-                        # Shadow effect (simple)
-                        shadow_offset = 2
-                        shadow_color = (40, 40, 60)
-                        pygame.draw.line(self.screen, shadow_color,
-                                       (center_x - size + shadow_offset, center_y - size + shadow_offset),
-                                       (center_x + size + shadow_offset, center_y + size + shadow_offset), thickness)
-                        pygame.draw.line(self.screen, shadow_color,
-                                       (center_x + size + shadow_offset, center_y - size + shadow_offset),
-                                       (center_x - size + shadow_offset, center_y + size + shadow_offset), thickness)
-                        
-                        # Main X
-                        pygame.draw.line(self.screen, self.colors['x_color'],
-                                       (center_x - size, center_y - size),
-                                       (center_x + size, center_y + size), thickness)
-                        pygame.draw.line(self.screen, self.colors['x_color'],
-                                       (center_x + size, center_y - size),
-                                       (center_x - size, center_y + size), thickness)
+                        # Try to draw X using image first
+                        if self.x_image_scaled is not None:
+                            # Get image rect and center it
+                            image_rect = self.x_image_scaled.get_rect()
+                            image_rect.center = (center_x, center_y)
+                            
+                            # Add subtle shadow effect
+                            shadow_offset = 3
+                            shadow_surface = pygame.Surface(self.x_image_scaled.get_size())
+                            shadow_surface.fill((40, 40, 60))
+                            shadow_surface.set_alpha(100)
+                            shadow_rect = shadow_surface.get_rect()
+                            shadow_rect.center = (center_x + shadow_offset, center_y + shadow_offset)
+                            self.screen.blit(shadow_surface, shadow_rect)
+                            
+                            # Draw main image
+                            self.screen.blit(self.x_image_scaled, image_rect)
+                        else:
+                            # Fallback to drawn X
+                            size = int(min(self.cell_size // 3, 45))
+                            thickness = 6
+                            
+                            # Shadow effect (simple)
+                            shadow_offset = 2
+                            shadow_color = (40, 40, 60)
+                            pygame.draw.line(self.screen, shadow_color,
+                                           (center_x - size + shadow_offset, center_y - size + shadow_offset),
+                                           (center_x + size + shadow_offset, center_y + size + shadow_offset), thickness)
+                            pygame.draw.line(self.screen, shadow_color,
+                                           (center_x + size + shadow_offset, center_y - size + shadow_offset),
+                                           (center_x - size + shadow_offset, center_y + size + shadow_offset), thickness)
+                            
+                            # Main X
+                            pygame.draw.line(self.screen, self.colors['x_color'],
+                                           (center_x - size, center_y - size),
+                                           (center_x + size, center_y + size), thickness)
+                            pygame.draw.line(self.screen, self.colors['x_color'],
+                                           (center_x + size, center_y - size),
+                                           (center_x - size, center_y + size), thickness)
                     
                     else:  # O
-                        # Draw O - simple and fast
-                        radius = int(min(self.cell_size // 3, 40))
-                        thickness = 6
-                        
-                        # Shadow effect (simple)
-                        shadow_offset = 2
-                        shadow_color = (40, 40, 60)
-                        pygame.draw.circle(self.screen, shadow_color, 
-                                         (center_x + shadow_offset, center_y + shadow_offset), 
-                                         radius, thickness)
-                        
-                        # Main O
-                        pygame.draw.circle(self.screen, self.colors['o_color'], 
-                                         (center_x, center_y), radius, thickness)
+                        # Try to draw O using image first
+                        if self.o_image_scaled is not None:
+                            # Get image rect and center it
+                            image_rect = self.o_image_scaled.get_rect()
+                            image_rect.center = (center_x, center_y)
+                            
+                            # Add subtle shadow effect
+                            shadow_offset = 3
+                            shadow_surface = pygame.Surface(self.o_image_scaled.get_size())
+                            shadow_surface.fill((40, 40, 60))
+                            shadow_surface.set_alpha(100)
+                            shadow_rect = shadow_surface.get_rect()
+                            shadow_rect.center = (center_x + shadow_offset, center_y + shadow_offset)
+                            self.screen.blit(shadow_surface, shadow_rect)
+                            
+                            # Draw main image
+                            self.screen.blit(self.o_image_scaled, image_rect)
+                        else:
+                            # Fallback to drawn O
+                            radius = int(min(self.cell_size // 3, 40))
+                            thickness = 6
+                            
+                            # Shadow effect (simple)
+                            shadow_offset = 2
+                            shadow_color = (40, 40, 60)
+                            pygame.draw.circle(self.screen, shadow_color, 
+                                             (center_x + shadow_offset, center_y + shadow_offset), 
+                                             radius, thickness)
+                            
+                            # Main O
+                            pygame.draw.circle(self.screen, self.colors['o_color'], 
+                                             (center_x, center_y), radius, thickness)
     
     def draw_win_line(self):
         """Draw winning line animation"""
@@ -423,9 +523,9 @@ class TicTacToeGame(BaseGame):
         current_width, current_height = self.get_current_screen_size()
         
         # Title
-        title_text = self.font_title.render("TIC TAC TOE", True, self.colors['text_main'])
-        title_rect = title_text.get_rect(center=(current_width // 2, 60))
-        self.screen.blit(title_text, title_rect)
+        # title_text = self.font_title.render("TIC TAC TOE", True, self.colors['text_main'])
+        # title_rect = title_text.get_rect(center=(current_width // 2, 60))
+        # self.screen.blit(title_text, title_rect)
         
         # Draw grid and symbols
         self.draw_grid()

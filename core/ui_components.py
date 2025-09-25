@@ -337,8 +337,8 @@ class LogoManager:
     
     def load_logos(self):
         """Load PNG logo images"""
-        logo1_filename = "3-stripes-w.png"
-        logo2_filename = "3-foil-w.png"
+        logo1_filename = ""
+        logo2_filename = ""
         logo_size = (90, 90)
         
         try:
@@ -347,18 +347,18 @@ class LogoManager:
                 self.logo1_surface = pygame.image.load(logo1_filename).convert_alpha()
                 self.logo1_surface = self.scale_image_maintain_aspect(self.logo1_surface, logo_size)
                 print(f"Logo 1 loaded: {logo1_filename}")
-            else:
-                print(f"Logo 1 not found: {logo1_filename} - Creating default logo")
-                self.logo1_surface = self.create_default_logo(logo_size, CYAN)
+            # else:
+            #     print(f"Logo 1 not found: {logo1_filename} - Creating default logo")
+            #     self.logo1_surface = self.create_default_logo(logo_size, CYAN)
                 
             # Load second logo
             if os.path.exists(logo2_filename):
                 self.logo2_surface = pygame.image.load(logo2_filename).convert_alpha()
                 self.logo2_surface = self.scale_image_maintain_aspect(self.logo2_surface, logo_size)
                 print(f"Logo 2 loaded: {logo2_filename}")
-            else:
-                print(f"Logo 2 not found: {logo2_filename} - Creating default logo")
-                self.logo2_surface = self.create_default_logo(logo_size, PURPLE)
+            # else:
+            #     print(f"Logo 2 not found: {logo2_filename} - Creating default logo")
+            #     self.logo2_surface = self.create_default_logo(logo_size, PURPLE)
                 
         except pygame.error as e:
             print(f"Error loading logos: {e}")

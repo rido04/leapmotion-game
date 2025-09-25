@@ -17,10 +17,10 @@ AVAILABLE_GAMES = [
         'preview_color': (64, 255, 255)  # CYAN
     },
     {
-        'name': 'Fruit Slash',
+        'name': 'Shoe Slash',
         'module': 'games.fruit_ninja_game',
         'class': 'FruitNinjaGame',
-        'description': 'Swipe to slice fruits with hand gestures',
+        'description': 'Swipe to slice shoes with hand gestures',
         'preview_color': (255, 165, 0)  # Orange
     },
     {

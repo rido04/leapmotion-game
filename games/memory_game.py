@@ -337,7 +337,7 @@ class MemoryGame(BaseGame):
         current_width, current_height = self.get_current_screen_size()
         
         self.new_game_button = AnimatedButton(
-            current_width - 580, 20, 120, 50, "New Game", GREEN_DARK, GREEN
+            current_width - 200, 20, 120, 50, "New Game", GREEN_DARK, GREEN
         )
     
     def create_win_overlay_buttons(self):

@@ -44,7 +44,7 @@ class GameCard:
             'Tic Tac Toe': 'tic-tac-toe.png',
             'Memory Game': 'memory-card.png',
             'Balloon Pop': 'balloon.png',
-            'Fruit Slash': 'fruit.png',
+            'Shoe Slash': 'shoe.png',
         }
         
         game_name = self.game_info['name']
@@ -245,7 +245,7 @@ class MainMenu:
         current_width, current_height = self.get_current_screen_size()
         
         # Pre-render title
-        self.title_surface = self.font_title.render("HAND TRACKING GAMES", True, WHITE)
+        self.title_surface = self.font_title.render("INTERACTIVE MOTION GAMES", True, WHITE)
         self.title_rect = self.title_surface.get_rect(center=(current_width // 2, 80))
         
         # Pre-render subtitle

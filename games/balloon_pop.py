@@ -533,7 +533,7 @@ class BalloonPopGame(BaseGame):
         
         # Main restart button
         self.restart_button = AnimatedButton(
-            current_width - 280, 20, 130, 50, "New Game", PURPLE, GREEN
+            current_width - 200, 20, 130, 50, "New Game", PURPLE, GREEN
         )
         
         # Game over overlay button

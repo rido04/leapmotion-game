@@ -37,54 +37,38 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 Name: "autostart"; Description: "Start automatically with Windows (Kiosk Mode)"; GroupDescription: "Retail Options"; Flags: unchecked
 
 [Files]
+; Core files - selalu diinstall
 Source: "main.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "assets\*"; DestDir: "{app}\assets"; Flags: recursesubdirs createallsubdirs
-Source: "games\*"; DestDir: "{app}\games"; Flags: recursesubdirs createallsubdirs
 Source: "core\*"; DestDir: "{app}\core"; Flags: recursesubdirs createallsubdirs
 Source: "3-foil-w.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: "3-stripes-w.png"; DestDir: "{app}"; Flags: ignoreversion
-Source: "bata-3.jpg"; DestDir: "{app}"; Flags: ignoreversion
 Source: "3-foil.ico"; DestDir: "{app}"; Flags: ignoreversion
 
+; Game files - conditional berdasarkan pilihan
+Source: "games\tic_tac_toe.py"; DestDir: "{app}\games"; Check: IsGameSelected('tic_tac_toe')
+Source: "games\memory_game.py"; DestDir: "{app}\games"; Check: IsGameSelected('memory_game')  
+Source: "games\balloon_pop.py"; DestDir: "{app}\games"; Check: IsGameSelected('balloon_pop')
+Source: "games\fruit_ninja_game.py"; DestDir: "{app}\games"; Check: IsGameSelected('fruit_ninja')
+Source: "games\base_game.py"; DestDir: "{app}\games"; Flags: ignoreversion
+Source: "games\__init__.py"; DestDir: "{app}\games"; Flags: ignoreversion
 
-[Icons]
-; Desktop shortcut
-Name: "{autodesktop}\Adidas Interactive Games"; Filename: "{app}\main.exe"; IconFilename: "{app}\3-foil.ico"; Tasks: desktopicon; Comment: "Launch Adidas Interactive Games"
+; Assets - conditional per game
+Source: "assets\tic-tac-toe\*"; DestDir: "{app}\assets\tic-tac-toe"; Check: IsGameSelected('tic_tac_toe'); Flags: recursesubdirs
+Source: "assets\cards\*"; DestDir: "{app}\assets\cards"; Check: IsGameSelected('memory_game'); Flags: recursesubdirs
+Source: "assets\balloons\*"; DestDir: "{app}\assets\balloons"; Check: IsGameSelected('balloon_pop'); Flags: recursesubdirs
+Source: "assets\fruits\*"; DestDir: "{app}\assets\fruits"; Check: IsGameSelected('fruit_ninja'); Flags: recursesubdirs
 
-; Start menu
-Name: "{autoprograms}\{groupname}\Adidas Interactive Games"; Filename: "{app}\main.exe"; IconFilename: "{app}\3-foil.ico"; Comment: "Launch Adidas Interactive Games"
-Name: "{autoprograms}\{groupname}\Uninstall Adidas Interactive Games"; Filename: "{uninstallexe}"
-
-; Quick launch (deprecated in newer Windows, but kept for compatibility)
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\Adidas Interactive Games"; Filename: "{app}\main.exe"; Tasks: quicklaunchicon
-
-; Auto-start (untuk kiosk mode)
-Name: "{userstartup}\Adidas Interactive Games"; Filename: "{app}\main.exe"; Tasks: autostart; Comment: "Adidas Interactive Games - Kiosk Mode"
-
-[Run]
-; Install Leap Motion SDK dulu (jika ada)
-Filename: "{tmp}\LeapSDK\LeapSDK-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing Leap Motion SDK..."; Flags: waituntilterminated; Check: CheckFileExists('{tmp}\LeapSDK\LeapSDK-Setup.exe')
-
-; Launch app setelah install
-Filename: "{app}\main.exe"; Description: "{cm:LaunchProgram,Adidas Interactive Games}"; Flags: nowait postinstall skipifsilent
-
-[UninstallDelete]
-Type: filesandordirs; Name: "{app}"
+; Shared assets
+Source: "assets\icon\*"; DestDir: "{app}\assets\icon"; Flags: recursesubdirs createallsubdirs
 
 [Code]
-// Custom function untuk validasi file
-function CheckFileExists(FileName: String): Boolean;
-begin
-  Result := FileExists(ExpandConstant(FileName));
-end;
-
-// Custom page untuk retail options
 var
   RetailOptionsPage: TInputOptionWizardPage;
-  
+  GameSelectionPage: TInputOptionWizardPage;
+
 procedure InitializeWizard;
 begin
-  // Create custom page untuk retail-specific options
+  // Create retail options page first
   RetailOptionsPage := CreateInputOptionPage(wpSelectTasks,
     'Retail Deployment Options', 'Configure for retail environment',
     'Please select the deployment options for retail/kiosk use:',
@@ -92,31 +76,60 @@ begin
     
   RetailOptionsPage.Add('Enable Kiosk Mode (Fullscreen, hide cursor)');
   RetailOptionsPage.Add('Disable Windows key and Alt+Tab');
-  RetailOptionsPage.Add('Install Windows service for auto-restart');
   
-  // Default selections untuk retail
-  RetailOptionsPage.Values[0] := True;
-  RetailOptionsPage.Values[1] := False;
-  RetailOptionsPage.Values[2] := False;
+  // Create game selection page  
+  GameSelectionPage := CreateInputOptionPage(RetailOptionsPage.ID,
+    'Game Selection', 'Choose which game to install',
+    'Select ONE game for this outlet installation:',
+    False, True);
+    
+  GameSelectionPage.Add('Tic Tac Toe - Strategic thinking game');
+  GameSelectionPage.Add('Memory Game - Card matching challenge');
+  GameSelectionPage.Add('Balloon Pop - Action reaction game');
+  GameSelectionPage.Add('Shoe Slash - Ninja slicing action');
+  
+  GameSelectionPage.Values[0] := True;
 end;
 
-// Apply retail configurations
+function IsGameSelected(GameName: String): Boolean;
+begin
+  if GameName = 'tic_tac_toe' then
+    Result := GameSelectionPage.Values[0]
+  else if GameName = 'memory_game' then  
+    Result := GameSelectionPage.Values[1]
+  else if GameName = 'balloon_pop' then
+    Result := GameSelectionPage.Values[2]
+  else if GameName = 'fruit_ninja' then
+    Result := GameSelectionPage.Values[3]
+  else
+    Result := False;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ConfigFile: String;
   ConfigContent: String;
+  SelectedGame: String;
 begin
   if CurStep = ssPostInstall then
   begin
-    ConfigFile := ExpandConstant('{app}\config.ini');
+    ConfigFile := ExpandConstant('{app}\game_config.ini');
     
-    // Write config based on selections
+    // Determine selected game
+    if GameSelectionPage.Values[0] then SelectedGame := 'tic_tac_toe'
+    else if GameSelectionPage.Values[1] then SelectedGame := 'memory_game' 
+    else if GameSelectionPage.Values[2] then SelectedGame := 'balloon_pop'
+    else if GameSelectionPage.Values[3] then SelectedGame := 'fruit_ninja';
+    
+    // Write config
+    ConfigContent := '[GAME]' + #13#10 + 'selected_game=' + SelectedGame + #13#10#13#10;
+    
+    // Add retail config if selected
     if RetailOptionsPage.Values[0] then
     begin
-      ConfigContent := '[DISPLAY]' + #13#10 + 'kiosk_mode=true' + #13#10 + 'fullscreen=true' + #13#10;
-      SaveStringToFile(ConfigFile, ConfigContent, False);
+      ConfigContent := ConfigContent + '[DISPLAY]' + #13#10 + 'kiosk_mode=true' + #13#10 + 'fullscreen=true' + #13#10;
     end;
     
-    // Additional retail configurations bisa ditambah disini...
+    SaveStringToFile(ConfigFile, ConfigContent, False);
   end;
 end;

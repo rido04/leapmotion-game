@@ -58,10 +58,10 @@ class BaseGame(ABC):
         button_y = 20
         
         # Only back button now, positioned more centrally in top right
-        self.back_button = AnimatedButton(
-            current_width - 140, button_y, 120, 50, 
-            "🏠 Menu", RED_DARK, RED
-        )
+        # self.back_button = AnimatedButton(
+        #     current_width - 140, button_y, 120, 50, 
+        #     "Menu", RED_DARK, RED
+        # )
     
     def recalculate_common_ui(self):
         """Recalculate common UI positions when screen size changes"""
@@ -75,10 +75,10 @@ class BaseGame(ABC):
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.exit_to_menu = True
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            # Check common button clicks (only back button now)
-            if self.back_button.is_clicked(event.pos, True):
-                self.exit_to_menu = True
+        # elif event.type == pygame.MOUSEBUTTONDOWN:
+        #     # Check common button clicks (only back button now)
+        #     if self.back_button.is_clicked(event.pos, True):
+        #         self.exit_to_menu = True
     
     def update_common_ui(self):
         """Update common UI elements"""
@@ -91,12 +91,12 @@ class BaseGame(ABC):
             hand_pos = (hand_data.x, hand_data.y)
         
         # Update back button only
-        self.back_button.update(mouse_pos, hand_pos, hand_data.pinching)
+        # self.back_button.update(mouse_pos, hand_pos, hand_data.pinching)
         
         # Check for hand activation
-        if self.back_button.is_hand_activated():
-            self.exit_to_menu = True
-            print("Back to menu by hand gesture!")
+        # if self.back_button.is_hand_activated():
+        #     self.exit_to_menu = True
+        #     print("Back to menu by hand gesture!")
     
     def draw_common_elements(self):
         """Draw elements common to all games"""
@@ -113,7 +113,7 @@ class BaseGame(ABC):
         self.logo_manager.draw(self.screen)
         
         # Common buttons (only back button now)
-        self.back_button.draw(self.screen, self.font_small)
+        # self.back_button.draw(self.screen, self.font_small)
     
     def start_game(self):
         """Start the game - called before main loop"""
