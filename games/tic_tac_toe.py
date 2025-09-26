@@ -267,10 +267,11 @@ class TicTacToeGame(BaseGame):
             'bg_overlay': (25, 30, 40, 150),
             'grid_main': (120, 140, 160),
             'grid_border': (160, 180, 200),
-            'player1_color': (255, 100, 100),  # Red for Player 1
-            'player2_color': (100, 180, 255),  # Blue for Player 2
+            'player1_color': (255, 255, 255, 255),  # Red for Player 1
+            'player2_color': (0, 0, 0, 0),  # Blue for Player 2
             'win_line': (120, 255, 120),
-            'highlight': (255, 255, 120, 80),
+            'highlight_player1': (0, 0, 0, 0),
+            'highlight_player2': (255, 255, 255),
             'text_main': (230, 240, 250),
             'text_accent': (160, 200, 255),
             'input_bg': (50, 60, 80),
@@ -369,9 +370,7 @@ class TicTacToeGame(BaseGame):
         """Calculate enhanced layout with larger grid and player panels"""
         current_width, current_height = self.get_current_screen_size()
         
-        # Grid yang lebih besar untuk display besar
         available_width = current_width - 600  # Lebih banyak space untuk player panels
-        # Perbesar grid size minimum dan maximum
         min_grid_size = 600  # Minimum grid size untuk display besar
         max_grid_size = 800  # Maximum grid size
         
@@ -1080,22 +1079,28 @@ class TicTacToeGame(BaseGame):
                         x = int(self.grid_offset_x + col * self.cell_size)
                         y = int(self.grid_offset_y + row * self.cell_size)
                         
-                        # Pulsing highlight
+                        # Pulsing highlight dengan warna sesuai current player
                         pulse = int(abs(math.sin(self.animation_time * 0.2)) * 80 + 60)
-                        highlight_color = (*self.colors['highlight'][:3], pulse)
+                        
+                        # Pilih warna highlight berdasarkan current player
+                        if self.current_player == 1:
+                            highlight_color = self.colors['highlight_player1']
+                            current_player_color = self.colors['player1_color']
+                        else:
+                            highlight_color = self.colors['highlight_player2'] 
+                            current_player_color = self.colors['player2_color']
                         
                         highlight_surface = pygame.Surface((self.cell_size, self.cell_size))
                         highlight_surface.set_alpha(pulse)
-                        highlight_surface.fill(self.colors['highlight'][:3])
+                        highlight_surface.fill(highlight_color[:3])
                         self.screen.blit(highlight_surface, (x, y))
                         
                         # Border
-                        current_player_color = self.colors['player1_color'] if self.current_player == 1 else self.colors['player2_color']
                         if hand_data.pinching:
                             current_player_color = self.colors['win_line']
                             
                         pygame.draw.rect(self.screen, current_player_color, 
-                                       (x, y, self.cell_size, self.cell_size), 4)
+                                    (x, y, self.cell_size, self.cell_size), 4)
                 except:
                     pass
             

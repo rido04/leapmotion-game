@@ -64,7 +64,11 @@ Source: "assets\icon\*"; DestDir: "{app}\assets\icon"; Flags: recursesubdirs cre
 [Code]
 var
   RetailOptionsPage: TInputOptionWizardPage;
-  GameSelectionPage: TInputOptionWizardPage;
+  GameSelectionPage: TWizardPage;
+  RadioTicTacToe: TNewRadioButton;
+  RadioMemoryGame: TNewRadioButton;
+  RadioBalloonPop: TNewRadioButton;
+  RadioFruitNinja: TNewRadioButton;
 
 procedure InitializeWizard;
 begin
@@ -77,30 +81,73 @@ begin
   RetailOptionsPage.Add('Enable Kiosk Mode (Fullscreen, hide cursor)');
   RetailOptionsPage.Add('Disable Windows key and Alt+Tab');
   
-  // Create game selection page  
-  GameSelectionPage := CreateInputOptionPage(RetailOptionsPage.ID,
-    'Game Selection', 'Choose which game to install',
-    'Select ONE game for this outlet installation:',
-    False, True);
-    
-  GameSelectionPage.Add('Tic Tac Toe - Strategic thinking game');
-  GameSelectionPage.Add('Memory Game - Card matching challenge');
-  GameSelectionPage.Add('Balloon Pop - Action reaction game');
-  GameSelectionPage.Add('Shoe Slash - Ninja slicing action');
+  // Create custom game selection page with radio buttons
+  GameSelectionPage := CreateCustomPage(RetailOptionsPage.ID,
+    'Game Selection', 'Choose which game to install');
   
-  GameSelectionPage.Values[0] := True;
+  // Add description label
+  with TNewStaticText.Create(GameSelectionPage) do
+  begin
+    Parent := GameSelectionPage.Surface;
+    Caption := 'Select ONE game for this outlet installation:';
+    Left := 0;
+    Top := 0;
+    Width := GameSelectionPage.SurfaceWidth;
+  end;
+  
+  // Create radio buttons
+  RadioTicTacToe := TNewRadioButton.Create(GameSelectionPage);
+  with RadioTicTacToe do
+  begin
+    Parent := GameSelectionPage.Surface;
+    Caption := 'Tic Tac Toe - Strategic thinking game';
+    Left := 0;
+    Top := 30;
+    Width := GameSelectionPage.SurfaceWidth;
+    Checked := True; // Default selection
+  end;
+  
+  RadioMemoryGame := TNewRadioButton.Create(GameSelectionPage);
+  with RadioMemoryGame do
+  begin
+    Parent := GameSelectionPage.Surface;
+    Caption := 'Memory Game - Card matching challenge';
+    Left := 0;
+    Top := 55;
+    Width := GameSelectionPage.SurfaceWidth;
+  end;
+  
+  RadioBalloonPop := TNewRadioButton.Create(GameSelectionPage);
+  with RadioBalloonPop do
+  begin
+    Parent := GameSelectionPage.Surface;
+    Caption := 'Balloon Pop - Action reaction game';
+    Left := 0;
+    Top := 80;
+    Width := GameSelectionPage.SurfaceWidth;
+  end;
+  
+  RadioFruitNinja := TNewRadioButton.Create(GameSelectionPage);
+  with RadioFruitNinja do
+  begin
+    Parent := GameSelectionPage.Surface;
+    Caption := 'Shoe Slash - Ninja slicing action';
+    Left := 0;
+    Top := 105;
+    Width := GameSelectionPage.SurfaceWidth;
+  end;
 end;
 
 function IsGameSelected(GameName: String): Boolean;
 begin
   if GameName = 'tic_tac_toe' then
-    Result := GameSelectionPage.Values[0]
+    Result := RadioTicTacToe.Checked
   else if GameName = 'memory_game' then  
-    Result := GameSelectionPage.Values[1]
+    Result := RadioMemoryGame.Checked
   else if GameName = 'balloon_pop' then
-    Result := GameSelectionPage.Values[2]
+    Result := RadioBalloonPop.Checked
   else if GameName = 'fruit_ninja' then
-    Result := GameSelectionPage.Values[3]
+    Result := RadioFruitNinja.Checked
   else
     Result := False;
 end;
@@ -116,18 +163,26 @@ begin
     ConfigFile := ExpandConstant('{app}\game_config.ini');
     
     // Determine selected game
-    if GameSelectionPage.Values[0] then SelectedGame := 'tic_tac_toe'
-    else if GameSelectionPage.Values[1] then SelectedGame := 'memory_game' 
-    else if GameSelectionPage.Values[2] then SelectedGame := 'balloon_pop'
-    else if GameSelectionPage.Values[3] then SelectedGame := 'fruit_ninja';
+    if RadioTicTacToe.Checked then SelectedGame := 'tic_tac_toe'
+    else if RadioMemoryGame.Checked then SelectedGame := 'memory_game' 
+    else if RadioBalloonPop.Checked then SelectedGame := 'balloon_pop'
+    else if RadioFruitNinja.Checked then SelectedGame := 'fruit_ninja';
     
     // Write config
     ConfigContent := '[GAME]' + #13#10 + 'selected_game=' + SelectedGame + #13#10#13#10;
     
+    // Add display config (always fullscreen for games)
+    ConfigContent := ConfigContent + '[DISPLAY]' + #13#10 + 'fullscreen=true' + #13#10;
+    
     // Add retail config if selected
     if RetailOptionsPage.Values[0] then
     begin
-      ConfigContent := ConfigContent + '[DISPLAY]' + #13#10 + 'kiosk_mode=true' + #13#10 + 'fullscreen=true' + #13#10;
+      ConfigContent := ConfigContent + 'kiosk_mode=true' + #13#10;
+    end;
+    
+    if RetailOptionsPage.Values[1] then
+    begin
+      ConfigContent := ConfigContent + 'disable_windows_key=true' + #13#10;
     end;
     
     SaveStringToFile(ConfigFile, ConfigContent, False);

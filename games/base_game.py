@@ -54,14 +54,7 @@ class BaseGame(ABC):
         
     def create_common_ui(self):
         """Create UI buttons common to all games - uses dynamic screen size"""
-        current_width, current_height = self.get_current_screen_size()
-        button_y = 20
-        
-        # Only back button now, positioned more centrally in top right
-        # self.back_button = AnimatedButton(
-        #     current_width - 140, button_y, 120, 50, 
-        #     "Menu", RED_DARK, RED
-        # )
+        self.get_current_screen_size()
     
     def recalculate_common_ui(self):
         """Recalculate common UI positions when screen size changes"""
@@ -75,10 +68,6 @@ class BaseGame(ABC):
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self.exit_to_menu = True
-        # elif event.type == pygame.MOUSEBUTTONDOWN:
-        #     # Check common button clicks (only back button now)
-        #     if self.back_button.is_clicked(event.pos, True):
-        #         self.exit_to_menu = True
     
     def update_common_ui(self):
         """Update common UI elements"""
@@ -89,14 +78,6 @@ class BaseGame(ABC):
         hand_pos = None
         if hand_data.active and hand_data.hands_count > 0:
             hand_pos = (hand_data.x, hand_data.y)
-        
-        # Update back button only
-        # self.back_button.update(mouse_pos, hand_pos, hand_data.pinching)
-        
-        # Check for hand activation
-        # if self.back_button.is_hand_activated():
-        #     self.exit_to_menu = True
-        #     print("Back to menu by hand gesture!")
     
     def draw_common_elements(self):
         """Draw elements common to all games"""
