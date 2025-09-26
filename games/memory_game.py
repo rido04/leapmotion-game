@@ -6,6 +6,7 @@ Enhanced version with intro sequence and improved animations
 Fixed fullscreen layout alignment issues
 FIXED: Main Menu button functionality in win overlay
 MODIFIED: Using PNG images for card fronts and backs
+ENHANCED: Added start overlay before game begins
 """
 
 import pygame
@@ -98,14 +99,14 @@ class Card:
     def draw(self, screen, font, time_elapsed, game_state="playing"):
         """Draw the card with enhanced animations and images"""
         # Don't draw if intro animation hasn't started yet
-        if time_elapsed < self.intro_delay:
+        if time_elapsed < self.intro_delay and game_state != "start_overlay":
             return
             
         # Calculate card position with animations
         card_rect = self.rect.copy()
         
         # Intro slide-in effect
-        if self.intro_animation < 1.0:
+        if self.intro_animation < 1.0 and game_state != "start_overlay":
             slide_offset = int((1 - self.intro_animation) * 100)
             card_rect.x += slide_offset
         
@@ -138,6 +139,8 @@ class Card:
             show_face = True
         elif game_state == "playing" and self.flip_animation > 0.5:
             show_face = True
+        elif game_state == "start_overlay":
+            show_face = False  # Always show back during start overlay
         
         # Create a surface for rotation effect
         card_surface = pygame.Surface((card_rect.width, card_rect.height), pygame.SRCALPHA)
@@ -245,8 +248,8 @@ class MemoryGame(BaseGame):
         self.grid_rows = 3
         self.total_pairs = (self.grid_cols * self.grid_rows) // 2
         
-        # Game states
-        self.game_state = "intro_preview"  # intro_preview, countdown, playing, game_over
+        # Game states - ENHANCED with start_overlay
+        self.game_state = "start_overlay"  # start_overlay, intro_preview, countdown, playing, game_over
         self.state_timer = 0
         self.preview_duration = 3.0  # Show cards for 3 seconds
         self.countdown_duration = 3.0  # 3 second countdown
@@ -267,9 +270,9 @@ class MemoryGame(BaseGame):
         self.should_return_to_menu = False
         
         # Visual settings
-        self.card_width = 80
-        self.card_height = 100
-        self.card_spacing = 20
+        self.card_width = 160
+        self.card_height = 180
+        self.card_spacing = 60
         
         # Symbols and colors for cards (fallback)
         self.symbols = ['♠', '♥', '♦', '♣', '★', '●', '◆', '▲', '♪', '☀', '☽', '⚡']
@@ -282,6 +285,10 @@ class MemoryGame(BaseGame):
         self.win_new_game_button = None
         self.win_main_menu_button = None
         self.create_win_overlay_buttons()
+        
+        # START OVERLAY BUTTON - NEW ADDITION
+        self.start_game_button = None
+        self.create_start_overlay_button()
         
         # Initialize game
         self.setup_game()
@@ -354,11 +361,22 @@ class MemoryGame(BaseGame):
         # Remove Main Menu button completely
         self.win_main_menu_button = None
     
+    def create_start_overlay_button(self):
+        """Create button for start overlay - NEW FUNCTION"""
+        current_width, current_height = self.get_current_screen_size()
+        center_x = current_width // 2
+        center_y = current_height // 2
+        
+        self.start_game_button = AnimatedButton(
+            center_x - 80, center_y + 30, 160, 60, "START GAME", BLUE, CYAN
+        )
+    
     def recalculate_game_layout(self):
         """Recalculate game-specific layout when screen size changes"""
         print("Recalculating Memory Game layout...")
         self.create_game_buttons()
         self.create_win_overlay_buttons()
+        self.create_start_overlay_button()  # NEW: Recalculate start overlay button
         self.calculate_card_layout()
         
         # Update existing cards with new positions
@@ -406,7 +424,7 @@ class MemoryGame(BaseGame):
         self.game_won = False
         self.flip_timer = 0
         self.checking_match = False
-        self.game_state = "intro_preview"
+        self.game_state = "start_overlay"  # MODIFIED: Start with start overlay
         self.state_timer = time.time()
         
         # Reset return flag when starting new game
@@ -416,6 +434,10 @@ class MemoryGame(BaseGame):
         if self.win_new_game_button:
             if hasattr(self.win_new_game_button, 'reset_activation'):
                 self.win_new_game_button.reset_activation()
+        
+        if self.start_game_button:
+            if hasattr(self.start_game_button, 'reset_activation'):
+                self.start_game_button.reset_activation()
         
         # Calculate layout based on current screen size
         self.calculate_card_layout()
@@ -528,15 +550,30 @@ class MemoryGame(BaseGame):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_n:
                 self.setup_game()
-            elif event.key == pygame.K_SPACE and self.game_state == "intro_preview":
-                # Skip intro
-                self.game_state = "countdown"
-                self.state_timer = time.time()
-                for card in self.cards:
-                    card.show_during_intro = False
+            elif event.key == pygame.K_SPACE:
+                if self.game_state == "start_overlay":
+                    # Start the game from start overlay
+                    self.game_state = "intro_preview"
+                    self.state_timer = time.time()
+                elif self.game_state == "intro_preview":
+                    # Skip intro
+                    self.game_state = "countdown"
+                    self.state_timer = time.time()
+                    for card in self.cards:
+                        card.show_during_intro = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
+            # Handle start overlay button click - NEW
+            if self.game_state == "start_overlay":
+                mouse_pos = event.pos
+                if (self.start_game_button and 
+                    self.start_game_button.rect.collidepoint(mouse_pos)):
+                    print("Start Game button clicked!")
+                    self.game_state = "intro_preview"
+                    self.state_timer = time.time()
+                    return None
+            
             # Simplified win overlay button handling - only New Game button
-            if self.game_state == "game_over" and self.game_won:
+            elif self.game_state == "game_over" and self.game_won:
                 mouse_pos = event.pos
                 print(f"Win overlay active, mouse clicked at: {mouse_pos}")
                 
@@ -547,11 +584,13 @@ class MemoryGame(BaseGame):
                     self.setup_game()
                     return None
             
-            # Check regular game buttons (only if not in win overlay)
-            elif self.new_game_button and self.new_game_button.is_clicked(event.pos, True):
-                self.setup_game()
-            elif self.game_state == "playing":
-                # Check card clicks only during playing state
+            # Check regular game buttons (only if not in win overlay or start overlay)
+            elif self.game_state not in ["start_overlay", "game_over"]:
+                if self.new_game_button and self.new_game_button.is_clicked(event.pos, True):
+                    self.setup_game()
+            
+            # Check card clicks only during playing state
+            if self.game_state == "playing":
                 card = self.get_card_at_position(event.pos[0], event.pos[1])
                 if card:
                     self.handle_card_click(card)
@@ -563,7 +602,12 @@ class MemoryGame(BaseGame):
         current_time = time.time()
         elapsed = current_time - self.state_timer
         
-        if self.game_state == "intro_preview":
+        # NEW: start_overlay state - wait for user input
+        if self.game_state == "start_overlay":
+            # Stay in start overlay until user clicks start button or presses space
+            pass
+        
+        elif self.game_state == "intro_preview":
             # Show all cards for preview_duration
             if elapsed >= self.preview_duration:
                 self.game_state = "countdown"
@@ -620,12 +664,35 @@ class MemoryGame(BaseGame):
         
         self.last_pinch = hand_data.pinching
         
-        # Update UI buttons
+        # Update UI buttons based on game state
         hand_pos = (hand_data.x, hand_data.y) if (hand_data.active and hand_data.hands_count > 0) else None
-        self.new_game_button.update(mouse_pos, hand_pos, hand_data.pinching)
+        
+        # Update start overlay button - NEW
+        if self.game_state == "start_overlay":
+            if self.start_game_button:
+                self.start_game_button.update(mouse_pos, hand_pos, hand_data.pinching)
+                
+                # Check for hand gesture activation
+                if self.start_game_button.is_hand_activated():
+                    print("Game started from start overlay by hand gesture!")
+                    self.game_state = "intro_preview"
+                    self.state_timer = time.time()
+                    return None
+                
+                # Add pinch detection for start button
+                if hand_data.pinching and not self.last_pinch:
+                    if self.start_game_button.rect.collidepoint(hand_data.x, hand_data.y):
+                        print("Start Game button activated by pinch!")
+                        self.game_state = "intro_preview"
+                        self.state_timer = time.time()
+                        return None
+        
+        # Update regular game buttons (not during start overlay or win overlay)
+        elif self.game_state not in ["start_overlay", "game_over"]:
+            self.new_game_button.update(mouse_pos, hand_pos, hand_data.pinching)
         
         # Simplified win overlay button update - only New Game button
-        if self.game_state == "game_over" and self.game_won:
+        elif self.game_state == "game_over" and self.game_won:
             if self.win_new_game_button:
                 self.win_new_game_button.update(mouse_pos, hand_pos, hand_data.pinching)
                 
@@ -643,20 +710,111 @@ class MemoryGame(BaseGame):
                     self.setup_game()
                     return None
         
-        # Check for hand activation on regular buttons
-        if self.new_game_button.is_hand_activated():
+        # Check for hand activation on regular buttons (not during overlays)
+        if (self.game_state not in ["start_overlay", "game_over"] and 
+            self.new_game_button.is_hand_activated()):
             self.setup_game()
             print("New game started by hand gesture!")
         
         return None
     
+    def draw_start_overlay(self):
+        """Draw the start overlay - NEW FUNCTION"""
+        current_width, current_height = self.get_current_screen_size()
+        center_x = current_width // 2
+        center_y = current_height // 2
+        
+        # Semi-transparent overlay
+        overlay = pygame.Surface((current_width, current_height))
+        overlay.set_alpha(200)
+        overlay.fill((20, 20, 60))  # Dark blue background
+        self.screen.blit(overlay, (0, 0))
+        
+        # Animated background effects
+        time_elapsed = self.background_manager.time_elapsed
+        for i in range(15):
+            circle_x = (center_x - 400 + i * 60) + math.sin(time_elapsed * 1.5 + i * 0.3) * 30
+            circle_y = (center_y - 250) + math.cos(time_elapsed * 2 + i * 0.4) * 40
+            circle_size = int(5 + math.sin(time_elapsed * 3 + i) * 3)
+            alpha = int((math.sin(time_elapsed * 2 + i * 0.2) * 0.5 + 0.5) * 150)
+            
+            # Create a surface for the circle with alpha
+            circle_surface = pygame.Surface((circle_size * 2, circle_size * 2))
+            circle_surface.set_alpha(alpha)
+            pygame.draw.circle(circle_surface, CYAN, (circle_size, circle_size), circle_size)
+            self.screen.blit(circle_surface, (circle_x - circle_size, circle_y - circle_size))
+        
+        # Game title (static, no animation)
+        title_font = pygame.font.Font(None, 100)
+        
+        # Title shadow
+        title_shadow = title_font.render("MEMORY GAME", True, (50, 50, 50))
+        shadow_rect = title_shadow.get_rect(center=(center_x + 3, center_y - 147))
+        self.screen.blit(title_shadow, shadow_rect)
+        
+        # Main title
+        title_text = title_font.render("MEMORY GAME", True, YELLOW)
+        title_rect = title_text.get_rect(center=(center_x, center_y - 170))
+        self.screen.blit(title_text, title_rect)
+        
+        # Subtitle
+        subtitle_text = self.font_large.render("Match pairs of cards to win!", True, WHITE)
+        subtitle_rect = subtitle_text.get_rect(center=(center_x, center_y - 100))
+        self.screen.blit(subtitle_text, subtitle_rect)
+        
+        # Game features
+        features = [
+            "Hand tracking or mouse control",
+            "12 cards to match",
+        ]
+        
+        feature_start_y = center_y - 50
+        for i, feature in enumerate(features):
+            feature_text = self.font_medium.render(feature, True, LIGHT_GRAY)
+            feature_rect = feature_text.get_rect(center=(center_x, feature_start_y + i * 30))
+            self.screen.blit(feature_text, feature_rect)
+        
+        # Draw start button
+        if self.start_game_button:
+            self.start_game_button.draw(self.screen, self.font_medium)
+        
+        # Instructions
+        instructions = [
+            "Click START GAME or press SPACE to begin",
+            "Use mouse or hand gestures to play"
+        ]
+        
+        instruction_start_y = center_y + 120
+        for i, instruction in enumerate(instructions):
+            text_color = GREEN if i == 0 else LIGHT_GRAY
+            instruction_text = self.font_small.render(instruction, True, text_color)
+            instruction_rect = instruction_text.get_rect(center=(center_x, instruction_start_y + i * 25))
+            self.screen.blit(instruction_text, instruction_rect)
+        
+        # Hand tracking status
+        hand_data = self.hand_tracker.hand_data
+        if hand_data.active and hand_data.hands_count > 0:
+            status = f"Hand Tracking Active: {hand_data.hands_count} hands detected"
+            status_color = GREEN
+        else:
+            status = "Mouse mode - Hand tracking not available"
+            status_color = LIGHT_GRAY
+        
+        status_text = self.font_small.render(status, True, status_color)
+        status_rect = status_text.get_rect(center=(center_x, center_y + 200))
+        self.screen.blit(status_text, status_rect)
+    
     def draw_game_state_overlay(self):
         """Draw overlays based on current game state"""
         current_width, current_height = self.get_current_screen_size()
-        center_x = current_width // 2  # Fixed: use dynamic screen width
-        center_y = current_height // 2  # Fixed: use dynamic screen height
+        center_x = current_width // 2
+        center_y = current_height // 2
         
-        if self.game_state == "intro_preview":
+        if self.game_state == "start_overlay":
+            # Draw start overlay - NEW
+            self.draw_start_overlay()
+        
+        elif self.game_state == "intro_preview":
             # Draw preview overlay
             elapsed = time.time() - self.state_timer
             remaining = max(0, self.preview_duration - elapsed)
@@ -808,32 +966,21 @@ class MemoryGame(BaseGame):
         """Draw memory game specific elements"""
         current_width, current_height = self.get_current_screen_size()
         
-        # Draw title
-        title_text = self.font_title.render("MEMORY GAME", True, WHITE)
-        title_x = 250  # Positioned after logos
-        title_y = 40
-        self.screen.blit(title_text, (title_x, title_y))
+        # Draw cards (except during start overlay)
+        if self.game_state != "start_overlay":
+            for card in self.cards:
+                card.draw(self.screen, self.font_large, self.background_manager.time_elapsed, self.game_state)
         
-        # Draw subtitle
-        subtitle_text = self.font_small.render("Match pairs of cards", True, PURPLE)
-        subtitle_x = title_x
-        subtitle_y = title_y + 50
-        self.screen.blit(subtitle_text, (subtitle_x, subtitle_y))
-        
-        # Draw cards
-        for card in self.cards:
-            card.draw(self.screen, self.font_large, self.background_manager.time_elapsed, self.game_state)
-        
-        # Draw hand indicator (during playing and game over states)
-        if self.game_state in ["playing", "game_over"]:
+        # Draw hand indicator (during playing and game over states, and start overlay) - MODIFIED
+        if self.game_state in ["playing", "game_over", "start_overlay"]:
             hand_data = self.hand_tracker.hand_data
             if hand_data.active and hand_data.hands_count > 0:
                 pulse = math.sin(self.background_manager.time_elapsed * 6) * 3 + 8
                 hand_color = GREEN if not hand_data.pinching else YELLOW
                 
-                # Make hand indicator more visible during win overlay
-                if self.game_state == "game_over" and self.game_won:
-                    # Larger and brighter indicator for win overlay
+                # Enhanced visibility during overlays
+                if self.game_state in ["game_over", "start_overlay"] and self.game_won or self.game_state == "start_overlay":
+                    # Larger and brighter indicator for overlays
                     pygame.draw.circle(self.screen, hand_color, (hand_data.x, hand_data.y), int(pulse + 2))
                     pygame.draw.circle(self.screen, WHITE, (hand_data.x, hand_data.y), int(pulse + 2), 3)
                     # Add inner glow
@@ -849,7 +996,7 @@ class MemoryGame(BaseGame):
         
         # Draw game stats (only during playing and game over) - Fixed: use dynamic screen size
         if self.game_state in ["playing", "game_over"]:
-            stats_y = 600
+            stats_y = 1000
             center_x = current_width // 2
             
             # Moves counter
@@ -874,21 +1021,19 @@ class MemoryGame(BaseGame):
         # Draw game state overlay
         self.draw_game_state_overlay()
         
-        # Draw new game button (only when not in game over state)
-        if self.game_state != "game_over":
+        # Draw new game button (only when not in game over state or start overlay) - MODIFIED
+        if self.game_state not in ["game_over", "start_overlay"]:
             self.new_game_button.draw(self.screen, self.font_small)
         
         # Instructions - Fixed: use dynamic screen size
         if self.game_state == "playing":
             instructions = [
-                "Hover over cards and PINCH to flip them",
-                "Match pairs of identical symbols",
-                "Mouse click also works | N: New Game | ESC: Back to Menu"
+                "Developed and Maintained by GVI PT. Maxima Cipta Miliardatha development team"
             ]
-            instruction_y = current_height - 80
+            instruction_y = 50
             center_x = current_width // 2
             for i, instruction in enumerate(instructions):
-                text = self.font_small.render(instruction, True, LIGHT_GRAY)
+                text = self.font_small.render(instruction, True, WHITE)
                 text_rect = text.get_rect(center=(center_x, instruction_y + i * 25))
                 self.screen.blit(text, text_rect)
             
@@ -908,17 +1053,17 @@ class MemoryGame(BaseGame):
                     status_color = LIGHT_GRAY
             
             status_text = self.font_medium.render(status, True, status_color)
-            status_rect = status_text.get_rect(center=(center_x, 680))
+            status_rect = status_text.get_rect(center=(center_x, 900))
             self.screen.blit(status_text, status_rect)
         
-        # ALWAYS draw hand indicator on top of everything (including overlays)
+        # ALWAYS draw hand indicator on top of everything (including overlays) - ENHANCED
         hand_data = self.hand_tracker.hand_data
         if hand_data.active and hand_data.hands_count > 0:
             pulse = math.sin(self.background_manager.time_elapsed * 6) * 3 + 8
             hand_color = GREEN if not hand_data.pinching else YELLOW
             
-            # Enhanced visibility for win overlay
-            if self.game_state == "game_over" and self.game_won:
+            # Enhanced visibility for overlays
+            if self.game_state in ["game_over", "start_overlay"]:
                 # Extra bright and large indicator
                 glow_size = int(pulse * 2 + 10)
                 glow_surface = pygame.Surface((glow_size * 2, glow_size * 2))

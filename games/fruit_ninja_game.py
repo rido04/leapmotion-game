@@ -489,7 +489,7 @@ class FruitNinjaGame(BaseGame):
         
         # Start button
         self.start_button = AnimatedButton(
-            current_width//2 - 75, current_height//2 + 50, 150, 60, "Start Game", (0, 255, 0), (100, 255, 100)
+            current_width//2 - 75, current_height//2 + 50, 150, 60, "Start Game", (31, 89, 45), (100, 255, 100)
         )
         
         self.reset_button_normal = AnimatedButton(
@@ -509,7 +509,7 @@ class FruitNinjaGame(BaseGame):
     def get_game_info(self):
         return {
             'name': 'Shoe Slash',
-            'description': 'Slice fruits with hand gestures',
+            'description': 'Slice shoes with hand gestures',
             'preview_color': (255, 165, 0)
         }
     
@@ -883,28 +883,21 @@ class FruitNinjaGame(BaseGame):
             draw_surface.blit(title_text, title_rect)
             
             # Subtitle
-            subtitle_text = self.font_medium.render("Slice fruits with hand gestures!", True, WHITE)
+            subtitle_text = self.font_medium.render("Slice shoes with hand gestures!", True, WHITE)
             subtitle_rect = subtitle_text.get_rect(center=(current_width//2, current_height//2 - 70))
             draw_surface.blit(subtitle_text, subtitle_rect)
             
             # Instructions
             instructions = [
-                "• Move your hand to control the cursor",
-                "• Pinch your fingers to interact with buttons", 
-                "• Swipe through fruits to slice them",
-                "• Avoid bombs or lose lives!"
+                "Move your hand to control the cursor",
+                "Pinch your fingers to interact with buttons", 
             ]
             
             instruction_start_y = current_height//2 - 20
             for i, instruction in enumerate(instructions):
-                text = self.font_small.render(instruction, True, LIGHT_GRAY)
+                text = self.font_small.render(instruction, True, WHITE)
                 text_rect = text.get_rect(center=(current_width//2, instruction_start_y + i * 25))
                 draw_surface.blit(text, text_rect)
-            
-            # Controls info
-            controls_text = self.font_small.render("Controls: Hand Gestures or Mouse", True, (100, 200, 255))
-            controls_rect = controls_text.get_rect(center=(current_width//2, current_height//2 + 80))
-            draw_surface.blit(controls_text, controls_rect)
             
             # Start button
             self.start_button.draw(draw_surface, self.font_small)
@@ -992,7 +985,7 @@ class FruitNinjaGame(BaseGame):
             # Game stats
             stats = [
                 f"Game Time: {60 - self.game_time:.1f} seconds",
-                f"Fruits Sliced: {self.score // 20}",  # Rough estimate
+                f"Shoes Sliced: {self.score // 20}",  # Rough estimate
                 f"Frenzy Modes: {self.frenzy_count}"
             ]
             
@@ -1005,8 +998,8 @@ class FruitNinjaGame(BaseGame):
             # Play Again button
             self.reset_button_game_over.draw(draw_surface, self.font_small)
 
-        dev_text = "Developed and Maintained by GVI Development Team"
-        dev_surface = self.font_small.render(dev_text, True, (128, 128, 128))  # Abu-abu
+        dev_text = "Developed and Maintained by GVI PT. Maxima Cipta Miliardatha Development Team"
+        dev_surface = self.font_small.render(dev_text, True, (255, 255, 255))  # Abu-abu
         dev_rect = dev_surface.get_rect()
         dev_rect.bottomright = (current_width - 10, current_height - 10)
         draw_surface.blit(dev_surface, dev_rect)
@@ -1106,7 +1099,7 @@ class FruitNinjaGame(BaseGame):
                     f"Final Score: {self.score}",
                     f"Time Survived: {60 - self.game_time:.1f}s",
                     f"Frenzy Modes: {self.frenzy_count}",
-                    f"Fruits Sliced: {self.score // 20}"  # Rough estimate
+                    f"Shoes Sliced: {self.score // 20}"  # Rough estimate
                 ]
             else:
                 # Start screen info
@@ -1117,10 +1110,10 @@ class FruitNinjaGame(BaseGame):
                 panel_surface.blit(title_surface, (content_x, content_y))
                 
                 stats = [
-                    "60 seconds to slice fruits",
+                    "60 seconds to slice shoes",
                     "5 lives, avoid bombs!",
                     "Frenzy mode = invincible",
-                    "Swipe through fruits to slice"
+                    "Swipe through shoes to slice"
                 ]
             
             # Draw stats

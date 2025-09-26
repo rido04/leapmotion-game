@@ -25,7 +25,7 @@ class VirtualKeyboard:
             ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
             ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
             ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL'],
-            ['SPACE', 'DONE']
+            ['SPACE']
         ]
         
         self.key_width = 60
@@ -35,7 +35,7 @@ class VirtualKeyboard:
         # Center the keyboard
         keyboard_width = 10 * (self.key_width + self.key_margin)
         self.start_x = (screen_width - keyboard_width) // 2
-        self.start_y = screen_height - 500
+        self.start_y = screen_height - 550
         
         self.key_rects = {}
         self.create_key_rects()
@@ -120,21 +120,38 @@ class PlayerPanel:
         self.is_current = False
         
         # Enhanced color scheme
-        self.colors = {
-            'panel_bg': (35, 45, 65),
-            'panel_active': (50, 70, 100),
-            'panel_border': (100, 120, 150),
-            'active_border': (80, 200, 80),
-            'text_main': (245, 250, 255),
-            'text_accent': (160, 200, 255),
-            'text_shadow': (15, 20, 30),
-            'wins_color': (80, 255, 120),
-            'wins_bg': (20, 40, 25),
-            'symbol_bg': (45, 55, 75),
-            'active_glow': (100, 255, 100, 60)
-        }
+        if player_num == 1:
+        # Player 1 - warna existing (biru)
+            self.colors = {
+                'panel_bg': (35, 45, 65),
+                'panel_active': (50, 70, 100),
+                'panel_border': (100, 120, 150),
+                'active_border': (80, 200, 80),
+                'text_main': (245, 250, 255),
+                'text_accent': (255, 255, 255),
+                'text_shadow': (15, 20, 30),
+                'wins_color': (80, 255, 120),
+                'wins_bg': (20, 40, 25),
+                'symbol_bg': (45, 55, 75),
+                'active_glow': (100, 255, 100, 60)
+            }
+        else:  # player_num == 2
+            # Player 2 - tema hijau gelap
+             self.colors = {
+                'panel_bg': (20, 35, 20),           # Hijau sangat gelap
+                'panel_active': (30, 50, 30),       # Hijau gelap aktif
+                'panel_border': (60, 100, 60),      # Hijau redup border
+                'active_border': (80, 180, 80),     # Hijau saat aktif
+                'text_main': (230, 245, 230),       # Putih kehijauan soft
+                'text_accent': (255, 255, 255),     # Hijau muda accent
+                'text_shadow': (8, 20, 8),          # Shadow hijau sangat gelap
+                'wins_color': (100, 220, 100),      # Hijau medium score
+                'wins_bg': (12, 25, 12),            # Background score hijau gelap
+                'symbol_bg': (25, 40, 25),          # Background symbol
+                'active_glow': (80, 200, 80, 60)    # Glow hijau
+            }
     
-    def draw(self, screen, font_medium, font_small, symbol_image=None):
+    def draw(self, screen, font_medium, font_small, font_digital, symbol_image=None):
         """Draw the player panel"""
         # Background color based on active state
         bg_color = self.colors['panel_active'] if self.is_current else self.colors['panel_bg']
@@ -144,33 +161,59 @@ class PlayerPanel:
         pygame.draw.rect(screen, bg_color, self.rect)
         pygame.draw.rect(screen, border_color, self.rect, 3 if self.is_current else 2)
         
-        # Player symbol at top
+        # Player symbol at top (made bigger)
         symbol_y = self.rect.y + 20
         if symbol_image:
-            # Use provided symbol image
-            symbol_rect = symbol_image.get_rect()
-            symbol_rect.center = (self.rect.centerx, symbol_y + 30)
-            screen.blit(symbol_image, symbol_rect)
-            name_y = symbol_y + 80
+            # Use provided symbol image - scale it up to make it bigger
+            original_size = symbol_image.get_size()
+            scale_factor = 1.5  # Make it 50% bigger, adjust this value as needed
+            new_width = int(original_size[0] * scale_factor)
+            new_height = int(original_size[1] * scale_factor)
+            
+            scaled_symbol = pygame.transform.scale(symbol_image, (new_width, new_height))
+            symbol_rect = scaled_symbol.get_rect()
+            symbol_rect.center = (self.rect.centerx, symbol_y + 40)  # Adjusted position
+            screen.blit(scaled_symbol, symbol_rect)
+            name_y = symbol_y + 100  # Adjusted spacing
         else:
-            # Fallback text symbol
+            # Fallback text symbol - made bigger
             symbol_text = "X" if self.player_num == 1 else "O"
             symbol_color = (255, 100, 100) if self.player_num == 1 else (100, 180, 255)
+            # Use a larger font or scale up the text
             symbol_surface = font_medium.render(symbol_text, True, symbol_color)
-            symbol_rect = symbol_surface.get_rect(center=(self.rect.centerx, symbol_y))
-            screen.blit(symbol_surface, symbol_rect)
-            name_y = symbol_y + 40
+            # Scale up the text symbol
+            scaled_symbol = pygame.transform.scale(symbol_surface, 
+                                                (int(symbol_surface.get_width() * 1.5), 
+                                                int(symbol_surface.get_height() * 1.5)))
+            symbol_rect = scaled_symbol.get_rect(center=(self.rect.centerx, symbol_y + 20))
+            screen.blit(scaled_symbol, symbol_rect)
+            name_y = symbol_y + 60
         
         # Player name
         name_surface = font_medium.render(self.name[:12], True, self.colors['text_main'])  # Limit name length
         name_rect = name_surface.get_rect(center=(self.rect.centerx, name_y))
         screen.blit(name_surface, name_rect)
         
-        # Wins today
-        wins_text = f"Wins Today: {self.wins_today}"
-        wins_surface = font_small.render(wins_text, True, self.colors['wins_color'])
-        wins_rect = wins_surface.get_rect(center=(self.rect.centerx, name_y + 40))
-        screen.blit(wins_surface, wins_rect)
+        # Wins today label
+        wins_label = "Wins Today:"
+        wins_label_surface = font_small.render(wins_label, True, self.colors['wins_color'])
+        wins_label_rect = wins_label_surface.get_rect(center=(self.rect.centerx, name_y + 40))
+        screen.blit(wins_label_surface, wins_label_rect)
+
+        # Score number dengan margin lebih besar dari label
+        score_text = str(self.wins_today)
+        original_surface = font_digital.render(score_text, True, self.colors['wins_color'])
+
+        # Scale up score
+        scale_factor = 3
+        new_width = int(original_surface.get_width() * scale_factor)
+        new_height = int(original_surface.get_height() * scale_factor)
+        score_surface = pygame.transform.scale(original_surface, (new_width, new_height))
+
+        # Positioning dengan margin lebih besar (ubah +65 jadi +80 atau lebih)
+        margin_from_label = 55  # Margin dari "Wins Today"
+        score_rect = score_surface.get_rect(center=(self.rect.centerx, name_y + 40 + margin_from_label))
+        screen.blit(score_surface, score_rect)
         
         # Current player indicator
         if self.is_current:
@@ -204,6 +247,17 @@ class TicTacToeGame(BaseGame):
         self.last_key_press = None
         self.key_press_time = 0
         
+        # fonts
+        self.font_small = pygame.font.Font(None, 24)
+        self.font_medium = pygame.font.Font(None, 36)
+        
+        # Font "digital" menggunakan monospace dengan ukuran lebih besar
+        try:
+        # Coba load font digital
+            self.font_digital = pygame.font.Font("assets/fonts/digital/DS-DIGI.TTF", 32)
+        except:
+            # Fallback jika font tidak ada
+            self.font_digital = pygame.font.Font(None, 32)
         # Load and scale images
         self.load_symbol_images()
         
@@ -249,7 +303,7 @@ class TicTacToeGame(BaseGame):
             
             # Load images
             x_image_path = os.path.join(assets_path, "3-stripes-w.png")
-            o_image_path = os.path.join(assets_path, "3-foil-w.png")
+            o_image_path = os.path.join(assets_path, "3-foil-w2.png")
             
             self.x_image_original = pygame.image.load(x_image_path)
             self.o_image_original = pygame.image.load(o_image_path)
@@ -358,14 +412,22 @@ class TicTacToeGame(BaseGame):
             (60, 100, 60), (80, 120, 80)
         )
         
-        # Game over buttons
+        # Game over buttons - BERDAMPINGAN
+        button_width = 140
+        button_height = 50
+        button_spacing = 20  # Jarak antara button
+        
+        # Hitung posisi agar kedua button centered
+        total_width = (button_width * 2) + button_spacing
+        start_x = center_x - (total_width // 2)
+        
         self.play_again_button = AnimatedButton(
-            center_x - 80, current_height // 2 + 50, 160, 50, "PLAY AGAIN", 
+            start_x, current_height // 2 + 50, button_width, button_height, "PLAY AGAIN", 
             (60, 100, 60), (80, 120, 80)
         )
 
         self.new_players_button = AnimatedButton(
-            center_x - 80, current_height // 2 + 110, 160, 50, "NEW PLAYERS", 
+            start_x + button_width + button_spacing, current_height // 2 + 50, button_width, button_height, "NEW PLAYERS", 
             (100, 60, 60), (120, 80, 80)
         )
     
@@ -1001,8 +1063,8 @@ class TicTacToeGame(BaseGame):
             player1_symbol = self.x_image_panel if self.x_image_panel else None
             player2_symbol = self.o_image_panel if self.o_image_panel else None
             
-            self.players[1].draw(self.screen, self.font_medium, self.font_small, player1_symbol)
-            self.players[2].draw(self.screen, self.font_medium, self.font_small, player2_symbol)
+            self.players[1].draw(self.screen, self.font_medium, self.font_small, self.font_digital, player1_symbol)
+            self.players[2].draw(self.screen, self.font_medium, self.font_small, self.font_digital, player2_symbol)
             
             # Draw game grid and symbols
             self.draw_grid()
@@ -1039,15 +1101,10 @@ class TicTacToeGame(BaseGame):
             
             # Game info (only during gameplay)
             if self.game_state == 'playing':
-                # Title
-                # title_text = "COMPETITIVE TIC TAC TOE"
-                # title_surface = self.font_medium.render(title_text, True, self.colors['text_main'])
-                # title_rect = title_surface.get_rect(center=(current_width // 2, 40))
-                # self.screen.blit(title_surface, title_rect)
-                
                 # Control instructions
                 instructions = [
-                    "Click or Pinch to play • R: Reset • F11: Fullscreen • ESC: Menu"
+                    "Click or Pinch to play • R: Reset • F11: Fullscreen • ESC: Menu",
+                    "Developed and Maintained by GVI PT. Maxima Cipta Miliardatha development team"
                 ]
                 
                 for i, instruction in enumerate(instructions):
