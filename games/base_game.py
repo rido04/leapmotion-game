@@ -12,34 +12,40 @@ from core import *
 
 
 class BaseGame(ABC):
-    def __init__(self, screen=None):
-        # Initialize pygame if not already done
+    def __init__(self, game_config=None, screen=None):
         if not pygame.get_init():
             pygame.init()
-            
-        # Screen setup
+
         if screen is None:
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+            if game_config and game_config.get("fullscreen", True):
+                self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            else:
+                self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         else:
             self.screen = screen
-            
+
         self.clock = pygame.time.Clock()
-        
-        # Initialize fonts
-        self.setup_fonts()
-        
+
+        # Skala awal
+        self.scale = 1.0
+
+        # Initialize fonts (akan di-scale di recalc)
+        self.font_title = None
+        self.font_large = None
+        self.font_medium = None
+        self.font_small = None
+
         # Core systems
-        self.hand_tracker = HandTracker()
+        self.hand_tracker = HandTracker(self.screen)
         self.background_manager = VideoBackgroundManager()
         self.particle_system = ParticleSystem()
         self.logo_manager = LogoManager()
-        
-        # Control states
+
         self.running = True
         self.exit_to_menu = False
-        
-        # UI buttons (common to all games) - will be created with dynamic positions
-        self.create_common_ui()
+
+        # Hitung ulang UI awal
+        self.recalculate_common_ui()
         
     def setup_fonts(self):
         """Initialize pygame fonts"""
@@ -57,9 +63,26 @@ class BaseGame(ABC):
         self.get_current_screen_size()
     
     def recalculate_common_ui(self):
-        """Recalculate common UI positions when screen size changes"""
-        print("Recalculating common UI for new screen size...")
-        self.create_common_ui()
+        """Hitung ulang scaling & posisi UI berdasarkan resolusi layar"""
+        screen_w, screen_h = self.get_current_screen_size()
+        design_w, design_h = 1200, 800  # ukuran desain dasar
+        scale_x = screen_w / design_w
+        scale_y = screen_h / design_h
+        self.scale = min(scale_x, scale_y)
+
+        print(f"[UI SCALE] {self.scale:.2f} | Screen: {screen_w}x{screen_h}")
+
+        # Fonts
+        self.font_title = pygame.font.Font(None, int(FONT_TITLE * self.scale))
+        self.font_large = pygame.font.Font(None, int(FONT_LARGE * self.scale))
+        self.font_medium = pygame.font.Font(None, int(FONT_MEDIUM * self.scale))
+        self.font_small = pygame.font.Font(None, int(FONT_SMALL * self.scale))
+
+        # Grid & layout
+        self.grid_size = int(450 * self.scale)
+        self.cell_size = self.grid_size // 3
+        self.grid_offset_x = (screen_w - self.grid_size) // 2
+        self.grid_offset_y = int(screen_h * 0.2)
     
     def handle_common_events(self, event):
         """Handle events common to all games"""

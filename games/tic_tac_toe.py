@@ -254,7 +254,7 @@ class TicTacToeGame(BaseGame):
         # Font "digital" menggunakan monospace dengan ukuran lebih besar
         try:
         # Coba load font digital
-            self.font_digital = pygame.font.Font("assets/fonts/digital/DS-DIGI.TTF", 32)
+            self.font_digital = pygame.font.Font("assets/tic-tac-toe/fonts/digital/DS-DIGI.TTF", 32)
         except:
             # Fallback jika font tidak ada
             self.font_digital = pygame.font.Font(None, 32)
@@ -1010,7 +1010,7 @@ class TicTacToeGame(BaseGame):
         self.screen.blit(score1, score1_rect)
         
         score_text = f"{self.players[2].name}: {self.players[2].wins_today} wins today"
-        score2 = self.font_small.render(score_text, True, self.colors['player2_color'])
+        score2 = self.font_small.render(score_text, True, self.colors['player1_color'])
         score2_rect = score2.get_rect(center=(current_width // 2, box_y + 175))
         self.screen.blit(score2, score2_rect)
         
