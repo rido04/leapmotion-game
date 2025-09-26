@@ -489,14 +489,14 @@ class FruitNinjaGame(BaseGame):
         
         # Start button
         self.start_button = AnimatedButton(
-            current_width//2 - 75, current_height//2 + 50, 150, 60, "Start Game", (31, 89, 45), (100, 255, 100)
+            current_width//2 - 75, current_height//2 + 50, 150, 60, "Start Game", (31, 89, 45), (0, 0, 0)
         )
         
         self.reset_button_normal = AnimatedButton(
-            current_width - 190, 20, 120, 50, "Reset", (255, 165, 0), (255, 200, 100)
+            current_width - 190, 20, 120, 50, "Reset", (255, 165, 0), (0, 0, 0)
         )
         self.reset_button_game_over = AnimatedButton(
-            current_width//2 - 75, current_height//2 + 80, 150, 60, "Play Again", (255, 165, 0), (255, 200, 100)
+            current_width//2 - 75, current_height//2 + 80, 150, 60, "Play Again", (255, 165, 0), (0, 0, 0)
         )
     
     def recalculate_game_layout(self):
@@ -991,7 +991,7 @@ class FruitNinjaGame(BaseGame):
             
             stats_start_y = current_height//2 + 20
             for i, stat in enumerate(stats):
-                stat_text = self.font_small.render(stat, True, LIGHT_GRAY)
+                stat_text = self.font_small.render(stat, True, WHITE)
                 stat_rect = stat_text.get_rect(center=(current_width//2, stats_start_y + i * 20))
                 draw_surface.blit(stat_text, stat_rect)
             

@@ -174,8 +174,8 @@ class SimpleStartOverlay:
             center_y + 80, 
             button_width, button_height,
             "START GAME", 
-            (30, 40, 60), 
-            (100, 150, 255)
+            (48, 145, 48), 
+            (0, 0, 0)
         )
     
     def update(self, dt, mouse_pos, mouse_clicked, hand_pos=None, hand_clicked=False):
@@ -786,12 +786,12 @@ class BalloonPopGame(BaseGame):
         current_width, current_height = self.get_current_screen_size()
         
         self.restart_button = AnimatedButton(
-            current_width - 200, 20, 130, 50, "New Game", PURPLE, GREEN
+            current_width - 200, 20, 130, 50, "New Game", GREEN_DARK, BLACK
         )
         
         self.game_over_restart_button = AnimatedButton(
             current_width//2 - 100, current_height//2 + 60, 200, 60, 
-            "Play Again", (50, 50, 50), (100, 255, 100)
+            "Play Again", (48, 145, 48), (0, 0, 0)
         )
     
     def recalculate_game_layout(self):

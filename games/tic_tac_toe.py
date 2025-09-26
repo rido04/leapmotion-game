@@ -423,12 +423,12 @@ class TicTacToeGame(BaseGame):
         
         self.play_again_button = AnimatedButton(
             start_x, current_height // 2 + 50, button_width, button_height, "PLAY AGAIN", 
-            (60, 100, 60), (80, 120, 80)
+            (60, 100, 60), (0, 0, 0)
         )
 
         self.new_players_button = AnimatedButton(
             start_x + button_width + button_spacing, current_height // 2 + 50, button_width, button_height, "NEW PLAYERS", 
-            (100, 60, 60), (120, 80, 80)
+            (100, 60, 60), (0, 0, 0)
         )
     
     def load_daily_scores(self):

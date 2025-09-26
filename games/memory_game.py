@@ -344,7 +344,7 @@ class MemoryGame(BaseGame):
         current_width, current_height = self.get_current_screen_size()
         
         self.new_game_button = AnimatedButton(
-            current_width - 200, 20, 120, 50, "New Game", GREEN_DARK, GREEN
+            current_width - 200, 20, 120, 50, "New Game", GREEN_DARK, BLACK
         )
     
     def create_win_overlay_buttons(self):
@@ -355,7 +355,7 @@ class MemoryGame(BaseGame):
         
         # Only New Game button - no Main Menu button
         self.win_new_game_button = AnimatedButton(
-            center_x - 70, center_y + 80, 140, 50, "New Game", GREEN_DARK, GREEN
+            center_x - 70, center_y + 80, 140, 50, "New Game", GREEN_DARK, BLACK
         )
         
         # Remove Main Menu button completely
@@ -368,7 +368,7 @@ class MemoryGame(BaseGame):
         center_y = current_height // 2
         
         self.start_game_button = AnimatedButton(
-            center_x - 80, center_y + 30, 160, 60, "START GAME", BLUE, CYAN
+            center_x - 80, center_y + 30, 160, 60, "START GAME", BLUE, BLUE_DARK
         )
     
     def recalculate_game_layout(self):
@@ -940,7 +940,7 @@ class MemoryGame(BaseGame):
             # Simplified button instructions
             hand_data = self.hand_tracker.hand_data
             if hand_data.active and hand_data.hands_count > 0:
-                button_instruction = "Hover and PINCH to select | Mouse click also works"
+                button_instruction = ""
                 instruction_color = GREEN
                 
                 # Additional hand status
