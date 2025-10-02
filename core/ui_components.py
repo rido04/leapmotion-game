@@ -175,9 +175,7 @@ class VideoBackgroundManager:
     def load_background_image(self):
         """Load background image dari nama file umum"""
         possible_backgrounds = [
-            "background.png", "background.jpg", "background.jpeg",
-            "bata-3.jpg", "bg.jpg", "bg.jpeg",
-            "wallpaper.png", "wallpaper.jpg", "wallpaper.jpeg"
+            "bata-3.jpg"
         ]
         
         for bg_file in possible_backgrounds:

@@ -267,8 +267,8 @@ class TicTacToeGame(BaseGame):
             'bg_overlay': (25, 30, 40, 150),
             'grid_main': (120, 140, 160),
             'grid_border': (160, 180, 200),
-            'player1_color': (255, 255, 255, 255),  # Red for Player 1
-            'player2_color': (0, 0, 0, 0),  # Blue for Player 2
+            'player1_color': (255, 255, 255, 255),
+            'player2_color': (0, 0, 0, 0),
             'win_line': (120, 255, 120),
             'highlight_player1': (0, 0, 0, 0),
             'highlight_player2': (255, 255, 255),
@@ -305,13 +305,14 @@ class TicTacToeGame(BaseGame):
             # Load images
             x_image_path = os.path.join(assets_path, "3-stripes-w.png")
             o_image_path = os.path.join(assets_path, "3-foil-w2.png")
-            
-            self.x_image_original = pygame.image.load(x_image_path)
-            self.o_image_original = pygame.image.load(o_image_path)
+
+            #convert alpha for transparency
+            self.x_image_original = pygame.image.load(x_image_path).convert_alpha()
+            self.o_image_original = pygame.image.load(o_image_path).convert_alpha()
             
             self.x_image_scaled = None
             self.o_image_scaled = None
-            self.x_image_panel = None  # For player panels
+            self.x_image_panel = None  
             self.o_image_panel = None
             
         except pygame.error as e:
@@ -370,19 +371,18 @@ class TicTacToeGame(BaseGame):
         """Calculate enhanced layout with larger grid and player panels"""
         current_width, current_height = self.get_current_screen_size()
         
-        available_width = current_width - 600  # Lebih banyak space untuk player panels
-        min_grid_size = 600  # Minimum grid size untuk display besar
-        max_grid_size = 800  # Maximum grid size
+        available_width = current_width - 600  
+        min_grid_size = 600  
+        max_grid_size = 800  
         
         self.grid_size = int(max(min_grid_size, min(available_width * 0.9, current_height * 0.7, max_grid_size)))
         self.cell_size = int(self.grid_size // 3)
         self.grid_offset_x = int((current_width - self.grid_size) // 2)
         self.grid_offset_y = int(max(140, (current_height - self.grid_size) // 2 - 30))
         
-        # Player panels yang lebih besar dan lebih cantik
-        panel_width = 280  # Lebih lebar
-        panel_height = 400  # Lebih tinggi
-        panel_margin = 60   # Margin dari tepi
+        panel_width = 280  
+        panel_height = 400  
+        panel_margin = 60   
         
         self.players[1].rect = pygame.Rect(panel_margin, 120, panel_width, panel_height)
         self.players[2].rect = pygame.Rect(current_width - panel_margin - panel_width, 120, panel_width, panel_height)
@@ -390,7 +390,7 @@ class TicTacToeGame(BaseGame):
         # Scale images
         self.scale_symbol_images()
         
-        # Recreate virtual keyboard for new screen size
+        # create virtual keyboard
         self.virtual_keyboard = VirtualKeyboard(current_width, current_height)
     
     def create_game_buttons(self):
@@ -411,12 +411,11 @@ class TicTacToeGame(BaseGame):
             (60, 100, 60), (80, 120, 80)
         )
         
-        # Game over buttons - BERDAMPINGAN
+        # Game over buttons
         button_width = 140
         button_height = 50
-        button_spacing = 20  # Jarak antara button
+        button_spacing = 20  
         
-        # Hitung posisi agar kedua button centered
         total_width = (button_width * 2) + button_spacing
         start_x = center_x - (total_width // 2)
         
@@ -488,7 +487,6 @@ class TicTacToeGame(BaseGame):
         self.game_over = False
         self.win_line = None
         self.animation_time = 0
-        # Jangan ubah game_state di sini, biarkan method pemanggil yang menentukan
         
         # Update current player indicator
         self.players[1].is_current = True
@@ -507,7 +505,6 @@ class TicTacToeGame(BaseGame):
         self.players[1].wins_today = 0
         self.players[2].wins_today = 0
         
-        # Reset game board tanpa mengubah game_state
         self.board = [['' for _ in range(3)] for _ in range(3)]
         self.current_player = 1
         self.winner = None
@@ -517,7 +514,7 @@ class TicTacToeGame(BaseGame):
         self.players[1].is_current = True
         self.players[2].is_current = False
         
-        # Hapus file daily scores agar tidak di-load ulang
+        # Remove daily scores file
         try:
             if os.path.exists('daily_scores.json'):
                 os.remove('daily_scores.json')
@@ -755,12 +752,6 @@ class TicTacToeGame(BaseGame):
     def draw_name_input_screen(self):
         """Draw name input screen"""
         current_width, current_height = self.get_current_screen_size()
-        
-        # Title
-        # title_text = "COMPETITIVE TIC TAC TOE"
-        # title_surface = self.font_medium.render(title_text, True, self.colors['text_main'])
-        # title_rect = title_surface.get_rect(center=(current_width // 2, 80))
-        # self.screen.blit(title_surface, title_rect)
         
         # Player input prompt
         prompt_text = f"Enter name for Player {self.current_name_player}:"
