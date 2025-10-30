@@ -1,15 +1,15 @@
-# main.py (new version)
+# main.py (Updated with command line support)
 import sys
 import os
 import configparser
 from pathlib import Path
 
-def load_game_config():
-    """Load game configuration from installer"""
-    config_file = Path("game_config.ini")
+def load_game_config(config_file_name='game_config.ini'):
+    """Load game configuration from specified config file"""
+    config_file = Path(config_file_name)
     
     if not config_file.exists():
-        print("Configuration file not found!")
+        print(f"Configuration file '{config_file_name}' not found!")
         return None
         
     config = configparser.ConfigParser()
@@ -31,6 +31,9 @@ def launch_selected_game(game_config):
     """Launch the selected game directly"""
     try:
         game_name = game_config['selected_game']
+        
+        print(f"Loading {game_name}...")
+        
         if game_name == 'tic_tac_toe':
             from games.tic_tac_toe import TicTacToeGame
             game = TicTacToeGame(game_config)
@@ -56,20 +59,42 @@ def launch_selected_game(game_config):
             return
             
         # Launch game
+        print(f"Starting {game_name}...")
         game.run()
         
     except ImportError as e:
-        print(f"Error importing game {game_name}: {e}")
+        print(f"Error importing game '{game_name}': {e}")
+        print("Make sure all game files are properly installed.")
+        input("Press Enter to exit...")
     except Exception as e:
         print(f"Error launching game: {e}")
+        input("Press Enter to exit...")
 
 if __name__ == "__main__":
-    # Load configuration
-    selected_game = load_game_config()
+    print("=" * 50)
+    print("Adidas Interactive Games Launcher")
+    print("=" * 50)
     
-    if selected_game:
-        print(f"Launching {selected_game}...")
-        launch_selected_game(selected_game)
+    # Check if config file specified via command line
+    if len(sys.argv) > 1:
+        config_file = sys.argv[1]
+        print(f"Using config file: {config_file}")
     else:
-        print("No game configured. Please reinstall the application.")
+        config_file = 'game_config.ini'
+        print(f"Using default config file: {config_file}")
+    
+    # Load configuration
+    game_config = load_game_config(config_file)
+    
+    if game_config:
+        print(f"Configuration loaded successfully!")
+        print(f"Game: {game_config['selected_game']}")
+        print(f"Fullscreen: {game_config['fullscreen']}")
+        print(f"Kiosk Mode: {game_config['kiosk_mode']}")
+        print("-" * 50)
+        
+        launch_selected_game(game_config)
+    else:
+        print("ERROR: No valid game configuration found!")
+        print("Please reinstall the application or check your config files.")
         input("Press Enter to exit...")
