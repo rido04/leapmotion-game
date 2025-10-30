@@ -1,0 +1,76 @@
+{
+  "game_title": "Object Catcher",
+  "theme": "default",
+
+  "basket": {
+    "image": "baskets/basket_default.png",
+    "width": 220,
+    "height": 110,
+    "color_fallback": [100, 150, 200]
+  },
+
+  "good_items": [
+    {
+      "image": "good-items/good_1.png",
+      "points": 10,
+      "size": 50,
+      "color_fallback": [100, 200, 100],
+      "name": "Item A",
+      "spawn_weight": 50
+    },
+    {
+      "image": "good-items/good_2.png",
+      "points": 20,
+      "size": 60,
+      "color_fallback": [100, 150, 255],
+      "name": "Item B",
+      "spawn_weight": 30
+    },
+    {
+      "image": "good-items/good_3.png",
+      "points": 30,
+      "size": 70,
+      "color_fallback": [255, 200, 100],
+      "name": "Item C",
+      "spawn_weight": 20
+    }
+  ],
+
+  "bad_items": [
+    {
+      "image": "bad-items/bad_1.png",
+      "penalty": -1,
+      "size": 55,
+      "color_fallback": [200, 50, 50],
+      "name": "Bad Item",
+      "spawn_weight": 100
+    }
+  ],
+
+  "bonus_items": [
+    {
+      "image": "bonus-items/bonus_1.png",
+      "points": 50,
+      "size": 65,
+      "color_fallback": [255, 215, 0],
+      "name": "Bonus Star",
+      "spawn_weight": 100
+    }
+  ],
+
+  "difficulty": {
+    "initial_spawn_rate": 1.5,
+    "min_spawn_rate": 0.6,
+    "initial_fall_speed": 3.0,
+    "speed_increment": 0.2,
+    "bad_item_chance": 0.15,
+    "bonus_item_chance": 0.05
+  },
+
+  "game_settings": {
+    "game_duration": 60,
+    "starting_lives": 3,
+    "miss_penalty": true,
+    "combo_enabled": true
+  }
+}

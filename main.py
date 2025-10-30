@@ -46,6 +46,10 @@ def launch_selected_game(game_config):
         elif game_name == 'fruit_ninja':
             from games.fruit_ninja_game import FruitNinjaGame
             game = FruitNinjaGame(game_config)
+        
+        elif game_name == 'object_catcher':
+            from games.object_catcher_game import ObjectCatcherGame
+            game = ObjectCatcherGame(game_config)
             
         else:
             print(f"Unknown game: {game_name}")
