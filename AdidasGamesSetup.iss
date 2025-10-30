@@ -48,6 +48,7 @@ Source: "games\tic_tac_toe.py"; DestDir: "{app}\games"; Check: IsGameSelected('t
 Source: "games\memory_game.py"; DestDir: "{app}\games"; Check: IsGameSelected('memory_game')  
 Source: "games\balloon_pop.py"; DestDir: "{app}\games"; Check: IsGameSelected('balloon_pop')
 Source: "games\fruit_ninja_game.py"; DestDir: "{app}\games"; Check: IsGameSelected('fruit_ninja')
+Source: "games\object_catcher_game.py"; DestDir: "{app}\games"; Check: IsGameSelected('object_catcher')
 Source: "games\base_game.py"; DestDir: "{app}\games"; Flags: ignoreversion
 Source: "games\__init__.py"; DestDir: "{app}\games"; Flags: ignoreversion
 
@@ -57,6 +58,7 @@ Source: "assets\tic-tac-toe\*"; DestDir: "{app}\assets\tic-tac-toe"; Check: IsGa
 Source: "assets\cards\*"; DestDir: "{app}\assets\cards"; Check: IsGameSelected('memory_game'); Flags: recursesubdirs
 Source: "assets\balloons\*"; DestDir: "{app}\assets\balloons"; Check: IsGameSelected('balloon_pop'); Flags: recursesubdirs
 Source: "assets\fruits\*"; DestDir: "{app}\assets\fruits"; Check: IsGameSelected('fruit_ninja'); Flags: recursesubdirs
+Source: "assets\object-catcher\*"; DestDir: "{app}\assets\object-catcher"; Check: IsGameSelected('object_catcher'); Flags: recursesubdirs
 
 [Icons]
 ; Start Menu shortcut
@@ -73,6 +75,7 @@ var
   RadioMemoryGame: TNewRadioButton;
   RadioBalloonPop: TNewRadioButton;
   RadioFruitNinja: TNewRadioButton;
+  RadioObjectCatcher: TNewRadioButton;
 
 procedure InitializeWizard;
 begin
@@ -125,6 +128,14 @@ begin
     Caption := 'Shoe Slash - Ninja slicing action';
     Left := 0; Top := 105; Width := GameSelectionPage.SurfaceWidth;
   end;
+  
+  RadioObjectCatcher := TNewRadioButton.Create(GameSelectionPage);
+  with RadioObjectCatcher do
+  begin
+    Parent := GameSelectionPage.Surface;
+    Caption := 'Object Catcher - Catch Object with basket';
+    Left := 0; Top := 130; width := GameSelectionPage.SurfaceWidth;
+   end;
 end;
 
 function IsGameSelected(GameName: String): Boolean;
@@ -133,6 +144,7 @@ begin
   else if GameName = 'memory_game' then Result := RadioMemoryGame.Checked
   else if GameName = 'balloon_pop' then Result := RadioBalloonPop.Checked
   else if GameName = 'fruit_ninja' then Result := RadioFruitNinja.Checked
+  else if GameName = 'object_catcher' then Result := RadioObjectCatcher.Checked
   else Result := False;
 end;
 
@@ -147,7 +159,8 @@ begin
     if RadioTicTacToe.Checked then SelectedGame := 'tic_tac_toe'
     else if RadioMemoryGame.Checked then SelectedGame := 'memory_game'
     else if RadioBalloonPop.Checked then SelectedGame := 'balloon_pop'
-    else if RadioFruitNinja.Checked then SelectedGame := 'fruit_ninja';
+    else if RadioFruitNinja.Checked then SelectedGame := 'fruit_ninja'
+    else if RadioObjectCatcher.Checked then SelectedGame := 'object_catcher';
 
     ConfigContent := '[GAME]' + #13#10 + 'selected_game=' + SelectedGame + #13#10#13#10;
     ConfigContent := ConfigContent + '[DISPLAY]' + #13#10 + 'fullscreen=true' + #13#10;
